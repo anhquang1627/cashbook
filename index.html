@@ -77,7 +77,7 @@ a.btn{display:inline-flex;align-items:center;text-decoration:none}
 .seg button{background:transparent;border:0;padding:5px 10px;font-size:13px;font-weight:600;color:var(--ink2);cursor:pointer}
 .seg button+button{border-left:1px solid var(--line2)}
 .seg button.on{background:var(--ink);color:var(--surface)}
-input[type=text],input[type=number],input[type=date],input[type=search],select{background:var(--sunk);border:1px solid var(--line2);border-radius:7px;padding:7px 9px;min-width:0;width:100%}
+input[type=text],input[type=password],input[type=number],input[type=date],input[type=search],select{background:var(--sunk);border:1px solid var(--line2);border-radius:7px;padding:7px 9px;min-width:0;width:100%}
 label.f{display:grid;gap:4px;font-size:12.5px;font-weight:600;color:var(--ink2);min-width:0}
 .form{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));align-items:end}
 .form .grow{grid-column:span 2}
@@ -270,7 +270,7 @@ dialog.sheet::backdrop{background:rgba(10,14,20,.5)}
 @media (max-width:520px),(pointer:coarse){
   .keys{display:grid}
   .btn{min-height:40px}.btn.small,.seg button,.chip,.lnk{min-height:36px}nav a{padding-block:9px}
-  input[type=text],input[type=number],input[type=date],input[type=search],select,.tx select{font-size:16px;min-height:40px}
+  input[type=text],input[type=password],input[type=number],input[type=date],input[type=search],select,.tx select{font-size:16px;min-height:40px}
   .qamt input[type=text]{font-size:26px}
   .askf textarea{font-size:16px}
   .chk input{width:20px;height:20px}.chk{min-height:36px}
@@ -1503,16 +1503,49 @@ function saveQuick(place){
 /* ---------- Ask: a conversation with Claude about the numbers on this page ----------
    Claude is reached through the page's own Claude connection (the sample capability), only inside Claude.
    The conversation lives in this page's memory only: it is never saved, so the saved data is unchanged. */
-const ask={st:'idle',turns:[],live:'',err:'',off:'',ctl:null,fn:undefined};
-const ASK_OUTSIDE='Ask uses your Claude account to answer, so it works only when this page is open inside Claude. Everything else on this page works here.';
+const ask={st:'idle',turns:[],live:'',err:'',off:'',ctl:null,fn:undefined,keyErr:'',mem:''};
+const inClaude=()=>!!(window.claude&&window.claude.use);
+/* Inside Claude: the page's own Claude connection. Nothing else is used there. */
 async function getSample(){
   if(ask.fn!==undefined)return ask.fn;
-  if(!(window.claude&&window.claude.use)){ask.fn=null;ask.off=ASK_OUTSIDE;return null}
+  if(!inClaude()){ask.fn=null;return null}
   try{ask.fn=await window.claude.use('sample')}catch(e){ask.fn=null}
   if(!ask.fn)ask.off='Claude is not available to this page right now, so Ask cannot answer.';
   return ask.fn;
 }
-/* Turns Claude's reply into safe HTML: paragraphs, "- " lists, numbered lists and **bold**. Everything else is plain text. */
+/* ---------- Ask on its own website: your Claude API key ----------
+   The key is kept only in this browser (its own storage entry, never in your saved data or backups)
+   and is sent only to Anthropic's API, only when you send a question. */
+const KEYK='cashbook.apikey',ASK_API='https://api.anthropic.com/v1/messages',ASK_MODEL='claude-sonnet-5-5',ASK_MODEL_NAME='Claude Sonnet 5.5';
+function apiKey(){try{return localStorage.getItem(KEYK)||ask.mem}catch(e){return ask.mem}}
+function setApiKey(k){ask.mem=k||'';try{if(k)localStorage.setItem(KEYK,k);else localStorage.removeItem(KEYK)}catch(e){}}
+/* Asks Claude through the API and answers the same way the Claude connection does: {text, truncated}, or a rejected {code, text}. */
+async function apiAsk(input,opts){
+  const key=apiKey();if(!key)throw {code:'no_key'};
+  const msgs=[];for(const t of input.slice(1)){const last=msgs[msgs.length-1];if(last&&last.role===t.role)last.content+='\n\n'+t.content;else msgs.push({role:t.role,content:t.content})}
+  while(msgs.length&&msgs[0].role!=='user')msgs.shift();
+  const body={model:ASK_MODEL,max_tokens:16000,stream:true,output_config:{effort:'low'},fallbacks:'default',
+    system:[{type:'text',text:input[0].content,cache_control:{type:'ephemeral'}}],messages:msgs};
+  let res,text='',stop=null;
+  try{res=await fetch(ASK_API,{method:'POST',signal:opts.signal,headers:{'content-type':'application/json','x-api-key':key,'anthropic-version':'2026-10-21',
+    'anthropic-beta':'server-side-fallback-2026-07-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify(body)})}
+  catch(e){throw {code:e&&e.name==='AbortError'?'cancelled':'offline'}}
+  if(!res.ok){let m='';try{const j=await res.json();m=(j.error&&j.error.message)||''}catch(e){}
+    throw {code:res.status===401||res.status===403?'bad_key':res.status===429?'rate_limited':res.status===400||res.status===402||res.status===413?'api_said':'upstream_error',message:m}}
+  const rd=res.body.getReader(),dec=new TextDecoder();let buf='';
+  try{for(;;){const {done,value}=await rd.read();if(done)break;buf+=dec.decode(value,{stream:true}).replace(/\r\n/g,'\n');let i;
+    while((i=buf.indexOf('\n\n'))>=0){const chunk=buf.slice(0,i);buf=buf.slice(i+2);
+      const data=chunk.split('\n').filter(l=>l.startsWith('data:')).map(l=>l.slice(5).trim()).join('\n');if(!data)continue;let ev;try{ev=JSON.parse(data)}catch(e){continue}
+      if(ev.type==='content_block_delta'&&ev.delta&&ev.delta.type==='text_delta'&&ev.delta.text){text+=ev.delta.text;opts.onText({text,delta:ev.delta.text})}
+      else if(ev.type==='message_delta'&&ev.delta&&ev.delta.stop_reason)stop=ev.delta.stop_reason;
+      else if(ev.type==='error')throw {code:ev.error&&ev.error.type==='overloaded_error'?'upstream_error':ev.error&&ev.error.type==='rate_limit_error'?'rate_limited':'upstream_error',text:text||undefined}}}}
+  catch(e){if(e&&typeof e.code==='string')throw e;throw {code:opts.signal.aborted?'cancelled':'upstream_error',text:text||undefined}}
+  if(stop==='refusal')throw {code:'refused'};
+  if(!text.trim())throw {code:'empty_completion'};
+  return {text,truncated:stop==='max_tokens'};
+}
+/* What answers this page's questions: the Claude connection inside Claude, your API key elsewhere, or nothing yet. */
+async function getAsker(){if(inClaude())return getSample();return apiKey()?apiAsk:null}/* Turns Claude's reply into safe HTML: paragraphs, "- " lists, numbered lists and **bold**. Everything else is plain text. */
 function fmtAnswer(t){
   const out=[],inl=s=>esc(s).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>');let list=null,para=[];
   const endP=()=>{if(para.length)out.push('<p>'+para.map(inl).join('<br>')+'</p>');para=[]};
@@ -1524,25 +1557,39 @@ function fmtAnswer(t){
   endP();endL();return out.join('');
 }
 const ASK_STARTERS=['How am I doing this month?','Why is my cash so low?','How can I pay off my Visa faster?','Where could I cut $100 a month?','What should I watch before payday?'];
+function vKey(){
+  return `<section class="panel narrow"><header><h2>Connect your Claude API key</h2></header>
+    <p class="sub">On this website Ask answers with your own Claude API key, which is billed separately from a Claude subscription. Each question costs about one cent with ${ASK_MODEL_NAME}.</p>
+    <ol class="steps"><li>Sign in at <b>console.anthropic.com</b> and add some credit under <b>Billing</b>.</li>
+      <li>Set a monthly <b>spend limit</b> there too, so a mistake can never cost much.</li>
+      <li>Under <b>API keys</b>, create a key and copy it. It starts with <b>sk-ant-</b>.</li>
+      <li>Paste it below on your own phone or computer only.</li></ol>
+    <form id="keyform" class="askf"><label class="f">Claude API key<input type="password" id="api-key" autocomplete="off" spellcheck="false" autocapitalize="off" placeholder="sk-ant-…" aria-describedby="key-err"></label><button class="btn">Save key</button></form>
+    <p class="msg bad" id="key-err" role="alert"${ask.keyErr?'':' hidden'}>${esc(ask.keyErr)}</p>
+    <p class="sub">The key stays in this browser only. It is not in your saved data or backups, and it is sent only to Anthropic's API, only when you ask a question. Anyone who uses this browser could use it, so remove it from shared devices.</p></section>`;
+}
 function vAsk(){
-  if(ask.fn===undefined&&!(window.claude&&window.claude.use))getSample();
-  const off=ask.off,busy=ask.st==='busy';
+  if(ask.fn===undefined&&inClaude())getSample();
+  const off=ask.off,busy=ask.st==='busy',needKey=!inClaude()&&!apiKey(),key=apiKey();
   const msgs=ask.turns.map(m=>m.role==='user'?`<div class="mu"><span class="who">You</span><p>${esc(m.content)}</p></div>`
     :`<div class="ma"><span class="who">Claude</span>${fmtAnswer(m.content)}${m.cut?`<p class="sub">${m.cut==='stopped'?'You stopped this answer.':'This answer was cut off.'}</p>`:''}</div>`).join('');
-  return `${banner()}<section class="panel"><h2 class="ans" id="ans" tabindex="-1"><span class="k">${demo?'<b class="ex">Example</b><span class="vh">: </span>':''}Ask about your money</span><span class="big" id="ans-a">${off?(off===ASK_OUTSIDE?'Ask works only inside Claude':'Ask is turned off'):'What do you want to know?'}</span></h2>
-    <p class="sub">${off?esc(off):'Claude answers from the numbers on this page. It explains them, spots patterns and suggests changes. It does not give investment advice or recommend financial products. Your numbers go to Claude only when you send a question, and the conversation is not saved.'}</p></section>
-  ${off?'':`<section class="panel">
+  const big=off?'Ask is turned off':needKey?'Add your Claude API key to start':'What do you want to know?';
+  const sub=off?esc(off):`Claude answers from the numbers on this page. It explains them, spots patterns and suggests changes. It does not give investment advice or recommend financial products. Your numbers go to ${inClaude()?'Claude':'Anthropic’s API'} only when you send a question, and the conversation is not saved.`;
+  return `${banner()}<section class="panel"><h2 class="ans" id="ans" tabindex="-1"><span class="k">${demo?'<b class="ex">Example</b><span class="vh">: </span>':''}Ask about your money</span><span class="big" id="ans-a">${big}</span></h2>
+    <p class="sub">${sub}</p></section>
+  ${off?'':needKey?vKey():`<section class="panel">
     <div class="chat" id="chat">${msgs}${busy?`<div class="ma" aria-busy="true"><span class="who">Claude</span><div id="ask-live">${ask.live?fmtAnswer(ask.live):'<p class="sub">Thinking…</p>'}</div></div>`:''}</div>
     ${ask.err?`<p class="msg bad" role="alert">${esc(ask.err)}</p>`:''}
     ${!ask.turns.length&&!busy?`<div class="chips" role="group" aria-label="Questions to start with">${ASK_STARTERS.map(s=>`<button type="button" class="chip" data-act="askq" data-v="${esc(s)}">${esc(s)}</button>`).join('')}</div>`:''}
     <form id="askform" class="askf"><label class="vh" for="ask-q">Your question</label><textarea id="ask-q" rows="2" maxlength="2000" placeholder="Ask anything about your money" enterkeyhint="send"></textarea>
       ${busy?'<button type="button" class="btn ghost" data-act="askstop">Stop</button>':'<button class="btn">Send</button>'}</form>
-    ${ask.turns.length&&!busy?'<button type="button" class="btn ghost small" data-act="askclear" style="justify-self:start">Clear the conversation</button>':''}
+    <div class="row">${ask.turns.length&&!busy?'<button type="button" class="btn ghost small" data-act="askclear">Clear the conversation</button>':''}
+      ${!inClaude()&&key?`<span class="sub">Answers by ${ASK_MODEL_NAME} with your API key ending ${esc(key.slice(-4))}.</span><button type="button" class="btn ghost small" data-act="keyx">Remove key</button>`:''}</div>
   </section>`}`;
-}
-const ASK_FAIL={rate_limited:'Too many questions too quickly, or you have reached your Claude usage limit. Try again in a little while.',
+}const ASK_FAIL={rate_limited:'Too many questions too quickly, or you have reached your Claude usage limit. Try again in a little while.',
   refused:'Claude would not answer that. Try asking it another way.',session_expired:'You need to sign in to Claude again, then ask again.',
-  prompt_too_large:'The conversation got too long. Clear it and ask again.',empty_completion:'Claude gave no answer. Try asking it another way.'};
+  prompt_too_large:'The conversation got too long. Clear it and ask again.',empty_completion:'Claude gave no answer. Try asking it another way.',
+  offline:'Could not reach Anthropic’s API. Check your connection and try again.'};
 const ASK_OFF={not_granted:'You did not allow this page to use Claude, so Ask cannot answer. You can allow it from the page’s Permissions menu, then reload.',
   sampling_disabled:'Claude is not available for your account here, so Ask cannot answer.'};
 async function askSend(text){
@@ -1550,7 +1597,7 @@ async function askSend(text){
   const box=q('#ask-q');if(box)box.value='';
   ask.turns.push({role:'user',content:text});ask.err='';ask.live='';ask.st='busy';const ctl=ask.ctl=new AbortController();render();
   const scrollEnd=()=>{const c=q('#chat');if(c&&c.lastElementChild)c.lastElementChild.scrollIntoView({block:'nearest'})};scrollEnd();
-  const fn=await getSample();
+  const fn=await getAsker();
   if(!fn){ask.st='idle';render();return}
   const input=[{role:'user',content:advisorPrompt(S,A,demo)},...ask.turns.slice(-16)];
   try{
@@ -1560,6 +1607,9 @@ async function askSend(text){
     if(e&&e.text&&c!=='refused')ask.turns.push({role:'assistant',content:e.text,cut:c==='cancelled'?'stopped':true});
     if(c==='cancelled'){}
     else if(['not_granted','sampling_disabled','not_declared','capability_disabled','capability_removed'].includes(c))ask.off=ASK_OFF[c]||'Claude is not available to this page right now, so Ask cannot answer.';
+    else if(c==='bad_key')ask.err='Your API key was not accepted. Check it in the Anthropic Console, or remove it here and paste a new one.';
+    else if(c==='api_said')ask.err='Anthropic’s API turned the question down'+(e.message?': '+e.message:'.')+(/credit/i.test(e.message||'')?' Add credit in the Anthropic Console, then try again.':'');
+    else if(c==='no_key'){}
     else ask.err=ASK_FAIL[c]||'Something went wrong reaching Claude. Try again.';
     if(ask.err||ask.off)say(ask.err||ask.off)}
   finally{if(ask.ctl===ctl){ask.ctl=null;ask.st='idle';ask.live=''}
@@ -1574,6 +1624,7 @@ document.addEventListener('click',e=>{
   else if(a==='qplace'){const i=q('#q-amt');if(parseFloat(i.value)>0)saveQuick(d.v);else{q('#q-desc').value=d.v;const er=q('#q-err');er.textContent='Enter the amount, then press Save.';er.hidden=false;if(!qd.classList.contains('typing'))i.focus()}}
   else if(a==='askq'){askSend(d.v).then(()=>{const b=q('#ask-q');if(b)b.focus({preventScroll:true})});const b=q('#ask-q');if(b)b.focus({preventScroll:true})}
   else if(a==='askstop'){if(ask.ctl)ask.ctl.abort()}
+  else if(a==='keyx'){if(ask.ctl)ask.ctl.abort();setApiKey('');ask.err='';ask.keyErr='';say('Your API key was removed from this browser.');render();const k=q('#api-key');if(k)k.focus()}
   else if(a==='askclear'){if(ask.ctl)ask.ctl.abort();ask.turns=[];ask.err='';render();const b=q('#ask-q');if(b)b.focus()}
   else if(a==='skip'){const t=q('#ans')||q('#app');t.focus();t.scrollIntoView({block:'start'})}
   else if(a==='tbl'){ui.tbl[d.v]=!ui.tbl[d.v];saveUi();render()}
@@ -1626,6 +1677,9 @@ document.addEventListener('submit',e=>{
     leaveDemo();S.wish.push({id:uid('w'),name,price:Math.round(price*100)/100,need:+q('#w-need').value,added:TODAY});save(['meta']);e.target.reset();render();q('#w-name').focus()}
   else if(e.target.id==='qform'){saveQuick()}
   else if(e.target.id==='askform'){askSend(q('#ask-q').value)}
+  else if(e.target.id==='keyform'){const i=q('#api-key'),k=i.value.trim();i.value='';
+    if(!/^sk-ant-[A-Za-z0-9_-]{20,}$/.test(k)){ask.keyErr='That does not look like a Claude API key. It starts with sk-ant- and is long. Copy it again from the Anthropic Console.';render();const n=q('#api-key');if(n)n.focus();return}
+    ask.keyErr='';ask.err='';setApiKey(k);say('Key saved. Ask a question.');render();const b=q('#ask-q');if(b)b.focus()}
   else if(e.target.id==='cform'){const amt=parseFloat(q('#c-amt').value),d=q('#c-date').value;if(!(amt>0)||!d)return;
     leaveDemo();S.cash.push({id:uid('c'),d,amt:Math.round(amt*100)/100*+q('#c-dir').value,cat:q('#c-cat').value,note:q('#c-note').value.trim()});ui.msg=null;save(['meta']);e.target.reset();render()}
 });
