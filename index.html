@@ -1,0 +1,1525 @@
+<!doctype html><html lang="en-CA"><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Quang's Cashbook</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=IBM+Plex+Mono:wght@400;500;600&family=Instrument+Sans:wght@400..700&display=swap">
+<style>
+/* Layout: sticky ledger bar, four figures first, one wide chart with the findings beside it; wishlist verdicts print as receipts. */
+:root{
+  --bg:#edf0f5;--surface:#fbfcfd;--sunk:#f2f4f8;--ink:#10141c;--ink2:#465064;--muted:#6c7586;--line:#dce1e9;--line2:#c3cad6;
+  --accent:#1f63b8;--on-accent:#ffffff;--wash:#e2ecfa;--shadow:rgba(16,20,28,.14);
+  --s1:#2a78d6;--s2:#eb6834;--s3:#1baf7a;--band:rgba(42,120,214,.13);
+  --good:#0ca30c;--warn:#fab219;--crit:#d03b3b;--good-ink:#006300;--warn-ink:#7a5200;--crit-ink:#a52222;
+  --f-display:"Bricolage Grotesque","Avenir Next","Segoe UI",system-ui,sans-serif;
+  --f-body:"Instrument Sans","Segoe UI",system-ui,-apple-system,sans-serif;
+  --f-num:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0c0f14;--surface:#161a21;--sunk:#11151b;--ink:#eceff4;--ink2:#b7bfcc;--muted:#8791a3;--line:#262c37;--line2:#3a4353;
+  --accent:#3987e5;--on-accent:#071222;--wash:#16283f;--shadow:rgba(0,0,0,.5);
+  --s1:#3987e5;--s2:#d95926;--s3:#199e70;--band:rgba(57,135,229,.18);
+  --good-ink:#3fc23f;--warn-ink:#fab219;--crit-ink:#f08080;color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0c0f14;--surface:#161a21;--sunk:#11151b;--ink:#eceff4;--ink2:#b7bfcc;--muted:#8791a3;--line:#262c37;--line2:#3a4353;
+  --accent:#3987e5;--on-accent:#071222;--wash:#16283f;--shadow:rgba(0,0,0,.5);
+  --s1:#3987e5;--s2:#d95926;--s3:#199e70;--band:rgba(57,135,229,.18);
+  --good-ink:#3fc23f;--warn-ink:#fab219;--crit-ink:#f08080;color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 var(--f-body)}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+.wrap{max-width:1120px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1,h2,h3,p,ul,dl,dd,figure{margin:0}ul{padding:0;list-style:none}
+h2{font:700 19px/1.2 var(--f-display);letter-spacing:-.01em;text-wrap:balance}
+h3{font:600 15px/1.3 var(--f-body)}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:9;background:var(--surface);border-bottom:1px solid var(--line)}
+.top-in{display:flex;align-items:center;gap:8px 20px;flex-wrap:wrap;padding-block:10px}
+.brand{display:flex;align-items:baseline;gap:8px}
+.brand h1{font:800 22px/1 var(--f-display);letter-spacing:-.02em}
+.brand span{font:500 11px var(--f-num);color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+nav{display:flex;gap:2px;flex:1;min-width:0;overflow-x:auto}
+nav a{padding:6px 12px;border-radius:6px;color:var(--ink2);text-decoration:none;font-weight:600;white-space:nowrap}
+nav a:hover{background:var(--sunk)}
+nav a[aria-current]{background:var(--ink);color:var(--surface)}
+.sync{font:500 11px var(--f-num);color:var(--muted);white-space:nowrap}
+.sync::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--line2);margin-right:6px}
+.sync.ok::before{background:var(--good)}.sync.demo::before{background:var(--warn)}
+
+main{display:grid;gap:16px;padding-block:18px 48px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px;min-width:0;display:grid;gap:12px;align-content:start}
+.panel>header{display:flex;justify-content:space-between;align-items:center;gap:8px 12px;flex-wrap:wrap}
+.sub{color:var(--ink2);font-size:13.5px;max-width:65ch}
+.split{display:grid;gap:16px;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr)}
+.split.even{grid-template-columns:repeat(2,minmax(0,1fr))}
+.stack{display:grid;gap:16px;min-width:0;align-content:start}
+.banner{background:var(--wash);border:1px solid var(--line2);border-radius:10px;padding:12px 16px;display:flex;gap:10px 16px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.banner p{max-width:70ch}
+
+.tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.tile{background:var(--surface);padding:14px 16px;display:grid;gap:4px;min-width:0}
+.tile .k{font:500 11px var(--f-num);letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.tile .v{font:700 clamp(24px,3.4vw,32px)/1.1 var(--f-display);letter-spacing:-.02em;overflow-wrap:anywhere}
+.tile .v small{font:500 14px var(--f-body);color:var(--muted);letter-spacing:0}
+.tile .v.neg{color:var(--crit-ink)}.tile .v.pos{color:var(--good-ink)}
+.tile .s{font-size:12.5px;color:var(--ink2)}
+.tile.top{grid-column:1/-1;padding:16px;gap:6px}
+
+.btn{background:var(--accent);color:var(--on-accent);border:0;border-radius:7px;padding:8px 14px;font-weight:600;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line2)}
+.btn.small{padding:4px 10px;font-size:13px}
+.btn.danger{background:var(--crit);color:#fff}
+.btn:disabled{opacity:.5;cursor:default}
+a.btn{display:inline-flex;align-items:center;text-decoration:none}
+.seg{display:inline-flex;border:1px solid var(--line2);border-radius:7px;overflow:hidden}
+.seg button{background:transparent;border:0;padding:5px 10px;font-size:13px;font-weight:600;color:var(--ink2);cursor:pointer}
+.seg button+button{border-left:1px solid var(--line2)}
+.seg button.on{background:var(--ink);color:var(--surface)}
+input[type=text],input[type=number],input[type=date],input[type=search],select{background:var(--sunk);border:1px solid var(--line2);border-radius:7px;padding:7px 9px;min-width:0;width:100%}
+label.f{display:grid;gap:4px;font-size:12.5px;font-weight:600;color:var(--ink2);min-width:0}
+.form{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));align-items:end}
+.form .grow{grid-column:span 2}
+
+.chart{min-height:120px;position:relative}
+svg{display:block;max-width:100%}
+.ax{font:11px var(--f-num);fill:var(--muted)}
+.grid{stroke:var(--line);stroke-width:1}.grid.zero{stroke:var(--line2);stroke-width:1.5}
+.now{stroke:var(--line2);stroke-width:1;stroke-dasharray:2 3}
+.band{fill:var(--band);stroke:none}
+.ln{fill:none;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}.ln.dash{stroke-dasharray:5 4}
+.ln.s1{stroke:var(--s1)}.ln.s2{stroke:var(--s2)}.ln.s2.dash{stroke-dasharray:2 5}
+.dot{stroke:var(--surface);stroke-width:2}.dot.s1{fill:var(--s1)}.dot.s2{fill:var(--s2)}
+.cross{stroke:var(--line2);stroke-width:1}
+.b2{fill:var(--s2)}.b3{fill:var(--s3)}
+.selband{fill:var(--wash)}.hit{fill:transparent;cursor:pointer}
+.mlab{font:600 11.5px var(--f-body);fill:var(--ink2)}.mlab.on{fill:var(--ink)}
+.mnet{font:10.5px var(--f-num);fill:var(--muted)}
+.lg{display:flex;gap:6px 16px;flex-wrap:wrap;font-size:12.5px;color:var(--ink2)}
+.lg span{display:inline-flex;align-items:center;gap:6px}
+.lg i{width:14px;height:10px;border-radius:2px;display:inline-block}
+.lg i.l{height:0;border-top:2px solid var(--s1);border-radius:0}.lg i.l.d{border-top-style:dashed}.lg i.l.o{border-top-color:var(--s2);border-top-style:dotted}
+.lg i.k2{background:var(--s2)}.lg i.k3{background:var(--s3)}.lg i.kb{background:var(--band);height:10px}
+.facts{display:flex;gap:6px 22px;flex-wrap:wrap;font-size:13px;color:var(--ink2)}
+.facts b{font:600 13px var(--f-num);color:var(--ink)}
+#tip{position:fixed;z-index:20;pointer-events:none;background:var(--ink);color:var(--surface);font:12px/1.45 var(--f-num);padding:7px 9px;border-radius:6px;white-space:pre-line;max-width:260px}
+
+.ins{display:grid;gap:14px}
+.ins li{display:grid;gap:4px;padding-bottom:14px;border-bottom:1px solid var(--line)}
+.ins li:last-child{border:0;padding-bottom:0}
+.ins p{font-size:13.5px;color:var(--ink2)}
+.ins .do{color:var(--ink)}.ins .do b{font:600 11px var(--f-num);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-right:6px}
+.pill{justify-self:start;font:600 10.5px var(--f-num);letter-spacing:.07em;text-transform:uppercase;padding:1px 7px;border-radius:4px;border:1px solid currentColor}
+.pill.crit{color:var(--crit-ink)}.pill.warn{color:var(--warn-ink)}.pill.good{color:var(--good-ink)}.pill.info{color:var(--accent)}
+
+.list{display:grid}
+.li{display:grid;grid-template-columns:64px minmax(0,1fr) auto;gap:10px;align-items:baseline;padding:7px 0;border-bottom:1px solid var(--line);font-size:14px}
+.li:last-child{border:0}
+.li .d{font:12px var(--f-num);color:var(--muted)}
+.li .n{min-width:0;overflow-wrap:anywhere}.li .n small{display:block;color:var(--muted);font-size:12px}
+.amt{font:500 13.5px var(--f-num);font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right}
+.amt.in{color:var(--good-ink)}
+.empty{color:var(--muted);font-size:13.5px;padding:8px 0}
+
+.hbs{display:grid;gap:2px}
+.hb{display:grid;grid-template-columns:118px minmax(0,1fr) 68px;gap:10px;align-items:center;background:transparent;border:0;padding:5px 4px;border-radius:6px;text-align:left;cursor:pointer;width:100%}
+.hb:hover,.hb.on{background:var(--sunk)}
+.hb-l{font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hb-t{position:relative;height:14px}
+.hb-t i{position:absolute;inset:0 auto 0 0;background:var(--s1);border-radius:0 4px 4px 0;min-width:2px}
+.hb-t u{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink);border-radius:1px}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th{font:500 11px var(--f-num);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);text-align:right;padding:4px 6px;border-bottom:1px solid var(--line)}
+th:first-child,td:first-child{text-align:left;padding-left:0}
+td{padding:7px 6px;border-bottom:1px solid var(--line);text-align:right;vertical-align:middle}
+tr:last-child td{border:0}
+.chg.up{color:var(--crit-ink)}.chg.down{color:var(--good-ink)}
+.spark polyline{fill:none;stroke:var(--s1);stroke-width:1.5}.spark circle{fill:var(--s1)}
+.scroll{overflow-x:auto}
+.wk{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;height:190px;align-items:end}
+.wk-c{display:grid;grid-template-rows:16px 1fr auto;gap:4px;height:100%;text-align:center;font-size:12px;color:var(--ink2)}
+.wk-c em{font:500 11px var(--f-num);font-style:normal;color:var(--ink)}
+.wk-c .bar{display:flex;align-items:flex-end;justify-content:center}
+.wk-c i{display:block;width:min(100%,26px);background:var(--s1);border-radius:4px 4px 0 0;min-height:2px}
+.txbar{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:8px;flex:1;min-width:min(100%,280px);max-width:460px}
+.tx{display:grid;grid-template-columns:56px minmax(0,1fr) 150px 92px;gap:10px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line);font-size:14px}
+.tx select{padding:4px 6px;font-size:13px}
+.chips{display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:13px}
+.chip{background:var(--wash);border:0;border-radius:99px;padding:3px 10px;cursor:pointer;font-weight:600}
+
+.lever{display:grid;grid-template-columns:auto minmax(120px,1fr) auto;gap:8px 14px;align-items:center;font-size:13.5px}
+.lever input{accent-color:var(--accent);width:100%}
+.receipts{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:18px;align-items:start}
+.rw{filter:drop-shadow(0 1px 2px var(--shadow))}
+.rcpt{background:var(--surface);padding:16px 16px 22px;display:grid;gap:10px;
+  -webkit-mask:radial-gradient(5px at 50% 100%,#0000 97%,#000) 50%/12px 100%;mask:radial-gradient(5px at 50% 100%,#0000 97%,#000) 50%/12px 100%}
+.rcpt header{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.rcpt h3{font:700 17px/1.2 var(--f-display);overflow-wrap:anywhere;min-width:0}
+.stamp{font:600 11.5px var(--f-num);letter-spacing:.09em;text-transform:uppercase;border:2px solid currentColor;border-radius:4px;padding:2px 7px;transform:rotate(-3deg);white-space:nowrap;flex:none}
+.t-good .stamp{color:var(--good-ink)}.t-warn .stamp{color:var(--warn-ink)}.t-crit .stamp{color:var(--crit-ink)}.t-info .stamp{color:var(--accent)}
+.rcpt dl{display:grid;gap:3px;font:13px var(--f-num);border-block:1px dashed var(--line2);padding-block:9px}
+.rcpt dl div{display:flex;align-items:baseline;gap:6px}
+.rcpt dt{color:var(--ink2)}.rcpt dl span{flex:1;border-bottom:1px dotted var(--line2);min-width:12px}
+.rcpt p{font-size:13.5px;color:var(--ink2)}
+.rcpt .lesson{color:var(--ink)}.rcpt .lesson b{font:600 11px var(--f-num);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-right:6px}
+.rcpt footer{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.chk{display:inline-flex;gap:7px;align-items:center;font-size:13px;font-weight:600;cursor:pointer}
+.chk input{accent-color:var(--s2);width:16px;height:16px}
+.tl{display:grid;gap:8px}
+.tl-r{display:grid;grid-template-columns:minmax(90px,170px) minmax(0,1fr) 92px;gap:10px;align-items:center;font-size:13.5px}
+.tl-n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tl-t{height:12px;background:var(--sunk);border-radius:6px;position:relative}
+.tl-t i{position:absolute;inset:0 auto 0 0;background:var(--s1);border-radius:6px;min-width:6px}
+.tl-r.debt .tl-t i{background:var(--muted)}
+.tl-d{font:12.5px var(--f-num);text-align:right;color:var(--ink2)}
+
+.drop{display:grid;place-items:center;gap:2px;text-align:center;border:1.5px dashed var(--line2);border-radius:10px;padding:22px 14px;cursor:pointer;color:var(--ink2);background:var(--sunk)}
+.drop.over,.drop:focus-within{border-color:var(--accent);background:var(--wash)}
+.drop b{color:var(--ink)}
+.sr{position:absolute;opacity:0;width:1px;height:1px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.filebtn{position:relative;display:inline-block}.filebtn:focus-within{outline:2px solid var(--accent);outline-offset:2px}
+.undo{position:fixed;z-index:15;left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom,0px));width:max-content;max-width:calc(100vw - 24px);display:flex;gap:10px;align-items:center;background:var(--surface);border:1px solid var(--line2);border-radius:10px;padding:8px 10px 8px 14px;box-shadow:0 6px 24px var(--shadow);font-size:13.5px}
+.undo span{min-width:0;overflow-wrap:anywhere}
+.msg{font-size:13.5px;white-space:pre-line}.msg.ok{color:var(--good-ink)}.msg.bad{color:var(--crit-ink)}
+.acc{display:grid;grid-template-columns:minmax(120px,1.4fr) minmax(110px,1fr) repeat(3,minmax(84px,.8fr)) auto;gap:8px;align-items:end;padding:8px 0;border-bottom:1px solid var(--line)}
+.acc:last-of-type{border:0}
+.steps{color:var(--ink2);font-size:13.5px;padding-left:18px;list-style:decimal;display:grid;gap:4px}.steps b{color:var(--ink);font-weight:600}
+.code{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.code code{font:13px var(--f-num);background:var(--sunk);border:1px solid var(--line2);border-radius:6px;padding:6px 9px;user-select:all;-webkit-user-select:all;white-space:pre;overflow-wrap:anywhere}
+.big{font:700 clamp(22px,3vw,28px)/1.15 var(--f-display);letter-spacing:-.02em;text-wrap:balance}
+.narrow{max-width:760px}
+tr.on td{background:var(--wash)}tr.on td:first-child{box-shadow:inset 3px 0 0 var(--accent);padding-left:8px}
+.bud{display:grid;gap:12px}
+.bud-r{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:3px 10px;font-size:13.5px;align-items:baseline}
+.bud-t{grid-column:1/-1;height:10px;background:var(--sunk);border-radius:5px;position:relative}
+.bud-t i{position:absolute;inset:0 auto 0 0;background:var(--s1);border-radius:5px;min-width:2px}
+.bud-r.warn .bud-t i{background:var(--warn)}.bud-r.crit .bud-t i{background:var(--crit)}
+.bud-t u{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink);border-radius:1px}
+.bud-n{grid-column:1/-1;color:var(--ink2);font-size:12.5px}
+.bud-r.warn .bud-n{color:var(--warn-ink)}.bud-r.crit .bud-n{color:var(--crit-ink)}
+.whatif{display:grid;gap:8px;border-top:1px solid var(--line);padding-top:12px;font-size:13.5px}
+.whatif .chk{font-weight:500}
+.whatif .in{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.whatif .in input[type=number],.whatif .in input[type=date]{width:auto;flex:1;min-width:110px;max-width:170px}
+.dr{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(130px,.8fr) minmax(0,1.3fr);gap:6px 14px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);font-size:13.5px}
+.dr:last-child{border:0}.dr small{display:block;color:var(--muted);font-size:12px}
+.rvq{display:grid;gap:8px;padding:12px 0;border-bottom:1px solid var(--line);font-size:14px}.rvq:last-child{border:0;padding-bottom:0}
+.skip{position:fixed;left:8px;top:-80px;z-index:30;background:var(--ink);color:var(--surface);border:0;border-radius:6px;padding:8px 12px;font-weight:600}
+.skip:focus{top:calc(8px + env(safe-area-inset-top,0px))}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+main:focus{outline:none}
+.ans{display:grid;gap:4px;font:inherit;letter-spacing:0;scroll-margin-top:120px}
+.ans .k{font:500 11px var(--f-num);letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.ans .big{justify-self:start;overflow-wrap:anywhere;border-radius:6px}
+.ans .big.crit{color:var(--crit-ink)}
+.lnk{background:none;border:0;padding:0;color:var(--accent);font-weight:600;text-decoration:underline;text-align:left;cursor:pointer}
+tr.on .lnk{color:var(--ink)}
+td small{color:var(--muted);font-size:12px}
+.sp{display:inline-block;vertical-align:middle}
+.banner.bad{border-color:var(--crit)}
+.sync.bad::before{background:var(--crit)}
+.skel{display:grid;gap:10px}.skel i{display:block;height:14px;border-radius:7px;background:var(--sunk)}.skel i:nth-child(2){width:80%}.skel i:nth-child(3){width:55%}
+.hit:focus-visible{outline:none;stroke:var(--accent);stroke-width:2}
+svg.linechart{touch-action:pan-y}svg.linechart:focus-visible{outline-offset:-2px}
+.fab{display:none}
+dialog.sheet{border:1px solid var(--line2);border-radius:12px;background:var(--surface);color:var(--ink);padding:16px;width:min(420px,calc(100vw - 24px));max-height:calc(100dvh - 24px);overflow:auto;box-shadow:0 12px 40px var(--shadow)}
+dialog.sheet::backdrop{background:rgba(10,14,20,.5)}
+.qf{display:grid;gap:8px}
+.qf header{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.qamt{display:flex;align-items:center;gap:8px;font:700 26px/1 var(--f-display);color:var(--ink)}
+.qamt input[type=text]{font:inherit;padding:6px 10px}
+.qpay{border:0;padding:0;margin:0;min-width:0;display:grid;gap:4px}
+.qpay legend{padding:0;font-size:12.5px;font-weight:600;color:var(--ink2)}
+.qpay div{display:flex;flex-wrap:wrap;gap:6px}
+.qpay label{position:relative;display:inline-flex;min-width:0}
+.qpay input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer}
+.qpay span{border:1px solid var(--line2);border-radius:7px;padding:7px 9px;font-size:13.5px;font-weight:600;color:var(--ink2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.qpay input:checked+span{background:var(--ink);border-color:var(--ink);color:var(--surface)}
+.qpay input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.qf .chips{gap:6px}
+.qf .chip{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-height:34px;padding:3px 11px}
+.keys{display:none;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.keys button{background:var(--sunk);border:1px solid var(--line);border-radius:8px;font:600 20px/1 var(--f-num);min-height:44px;cursor:pointer;touch-action:manipulation}
+.keys button:active{background:var(--wash)}
+.qf .qsave{min-height:48px;font-size:16px}
+@media (max-width:860px){.split,.split.even{grid-template-columns:minmax(0,1fr)}.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.tile.wide{grid-column:1/-1}.acc{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:520px){
+  .tx{grid-template-columns:48px minmax(0,1fr) auto;row-gap:2px}.tx select{grid-column:2/4;grid-row:2}
+  .hb{grid-template-columns:96px minmax(0,1fr) 60px}.form .grow{grid-column:auto}
+  .lever{grid-template-columns:minmax(0,1fr)}.tl-r{grid-template-columns:minmax(70px,110px) minmax(0,1fr) 78px}
+  .panel{padding:14px}.sync{display:none}.brand{flex:1}nav{flex-basis:100%}nav a{padding:6px 8px}.dr{grid-template-columns:minmax(0,1fr)}
+  #quickbtn{display:none}main{padding-bottom:96px}
+  .fab{display:block;position:fixed;z-index:12;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));min-height:52px;padding:0 20px;border-radius:26px;font-size:16px;box-shadow:0 6px 20px var(--shadow)}
+  .undo{bottom:calc(80px + env(safe-area-inset-bottom,0px))}
+  dialog.sheet{margin:auto 0 0;width:100%;max-width:none;max-height:100dvh;border-width:1px 0 0;border-radius:14px 14px 0 0;padding:14px max(16px,env(safe-area-inset-right,0px)) calc(14px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+  dialog.sheet.typing{margin:0 0 auto;border-width:0 0 1px;border-radius:0 0 14px 14px;padding-top:calc(14px + env(safe-area-inset-top,0px))}
+  dialog.sheet.typing .keys,.qf .note{display:none}
+}
+/* Phones and touch screens: a number pad for amounts, larger targets, and text large enough that the phone does not zoom in on a field. */
+@media (max-width:520px),(pointer:coarse){
+  .keys{display:grid}
+  .btn{min-height:40px}.btn.small,.seg button,.chip,.lnk{min-height:36px}nav a{padding-block:9px}
+  input[type=text],input[type=number],input[type=date],input[type=search],select,.tx select{font-size:16px;min-height:40px}
+  .qamt input[type=text]{font-size:26px}
+  .chk input{width:20px;height:20px}.chk{min-height:36px}
+  input[type=range]{min-height:32px}
+  .qf .qsave{position:sticky;bottom:0;z-index:1}
+}
+/* Short phone screens: keep the whole add-a-payment sheet, Save included, on screen without scrolling. */
+@media (max-width:520px) and (max-height:720px){
+  .qf{gap:6px}
+  .keys{gap:4px}.keys button{min-height:38px}
+  .qpay div,.qf .chips{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+  .qpay label,.qf .chips>*{flex:none}
+  .qpay span{padding:7px 8px}
+}
+/* Motion only where something changed: a bar moving to its new length, a sheet or message arriving, the top answer changing. */
+@media (prefers-reduced-motion:no-preference){
+  .hb-t i,.tl-t i,.wk-c i,.bud-t i{transition:width .3s ease,height .3s ease}
+  .undo:not([hidden]){animation:rise .2s ease-out}
+  dialog.sheet[open]{animation:sheet .2s ease-out}dialog.sheet[open]::backdrop{animation:fade .2s ease-out}
+  .chg{animation:chg 1.4s ease-out}
+  .skel i{animation:pulse 1.1s ease-in-out infinite alternate}
+  @keyframes rise{from{opacity:0;transform:translate(-50%,10px)}}
+  @keyframes sheet{from{opacity:0;transform:translateY(18px)}}
+  @keyframes fade{from{opacity:0}}
+  @keyframes chg{from{background:var(--wash)}to{background:transparent}}
+  @keyframes pulse{from{opacity:.45}to{opacity:1}}
+}
+</style>
+
+<button class="skip" data-act="skip">Skip to content</button>
+<header class="top"><div class="wrap top-in">
+  <div class="brand"><h1>Cashbook</h1><span>CAD</span></div>
+  <nav id="nav" aria-label="Sections">
+    <a href="#overview">Overview</a><a href="#spending">Spending</a><a href="#debt">Debt</a><a href="#wishlist">Wishlist</a><a href="#data">Data</a>
+  </nav>
+  <span class="sync ok" id="livechip" hidden></span><span class="sync" id="sync"></span>
+  <button class="btn small" data-act="quick" id="quickbtn" aria-haspopup="dialog">+ Spend</button>
+</div></header>
+<main class="wrap" id="app" tabindex="-1"></main>
+<button class="btn fab" data-act="quick" id="fab" aria-haspopup="dialog">+ Spend</button>
+<dialog id="qd" class="sheet" aria-labelledby="qd-h"></dialog>
+<div id="tip" hidden></div>
+<div id="undo" class="undo" role="status" aria-live="polite" hidden></div>
+<div id="say" class="vh" role="status" aria-live="polite"></div>
+
+<script>
+/*CORE*/
+const DAY=864e5,pad=n=>String(n).padStart(2,'0');
+const toD=s=>{const a=s.split('-');return Date.UTC(+a[0],a[1]-1,+a[2])};
+const iso=ms=>new Date(ms).toISOString().slice(0,10);
+const addDays=(s,n)=>iso(toD(s)+n*DAY);
+const diff=(a,b)=>Math.round((toD(a)-toD(b))/DAY);
+const dowOf=s=>new Date(toD(s)).getUTCDay();
+const ym=s=>s.slice(0,7);
+const sum=a=>a.reduce((x,y)=>x+y,0);
+const median=a=>{if(!a.length)return 0;const s=[...a].sort((x,y)=>x-y),m=s.length>>1;return s.length%2?s[m]:(s[m-1]+s[m])/2};
+const nf2=new Intl.NumberFormat('en-CA',{style:'currency',currency:'CAD',currencyDisplay:'narrowSymbol'});
+const nf0=new Intl.NumberFormat('en-CA',{style:'currency',currency:'CAD',currencyDisplay:'narrowSymbol',maximumFractionDigits:0});
+const money=n=>nf2.format(n||0).replace('-','−');
+const money0=n=>nf0.format(Math.round(n||0)).replace('-','−').replace(/^−\$0$/,'$0');
+const signed=n=>(n>=0?'+':'')+money0(n);
+const dfmt=(s,o)=>new Date(toD(s)).toLocaleDateString('en-US',{timeZone:'UTC',...o});
+const dshort=s=>dfmt(s,{month:'short',day:'numeric'});
+const dlong=s=>dfmt(s,{weekday:'short',month:'short',day:'numeric',year:'numeric'});
+const pct=n=>String(+(+n).toFixed(1));
+const DOW=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+
+const CATS={Income:'in',Transfer:'x','Cash withdrawal':'x',Rent:'fixed','Phone & internet':'fixed',School:'fixed',Groceries:'flex','Eating out':'flex',Transport:'flex',Shopping:'flex',Subscriptions:'flex',Fun:'flex',Health:'flex','Fees & interest':'flex','Untracked cash':'flex',Other:'flex'};
+const TRIM=new Set(['Eating out','Shopping','Subscriptions','Fun','Untracked cash','Other']);
+const NEED=['','Pure want','Nice to have','Useful','Need soon','Must have'];
+const RULES=[
+ ['Subscriptions',/SPOTIFY|NETFLIX|DISNEY|CRAVE|YOUTUBE|APPLE\.COM|GOOGLE|OPENAI|CHATGPT|CLAUDE|ANTHROPIC|AMAZON(\.CA)? ?PRIME|AMZN PRIME|PRIME VIDEO|ICLOUD|ADOBE|MICROSOFT|NOTION|PATREON|AUDIBLE|DUOLINGO|CANVA/],
+ ['Eating out',/TIM HORTONS|MCDONALD|STARBUCKS|SUBWAY|PIZZA|BURGER|KFC|POPEYES|WENDY|A&W|TACO|SUSHI|\bPHO\b|RAMEN|NOODLE|RESTAURANT|CAFE|COFFEE|BUBBLE|\bTEA\b|CHATIME|UBER ?EATS|DOORDASH|SKIP ?THE|GRILL|KITCHEN|BAKERY|DINER|BBQ|SHAWARMA|WINGS|\bPUB\b|DAIRY QUEEN|DOMINO|CHIPOTLE|FIVE GUYS|HARVEY|DESSERT|MARMALADE|OSMOW|BANH MI|COCA[- ]?COLA|ESPRESSO/],
+ ['Groceries',/FOOD BASICS|FRESHCO|WAL-?MART|WM SUPERC|ASIAN BASKET|NO FRILLS|\bMETRO\b|ZEHRS|SUPERSTORE|COSTCO|SOBEYS|T&T|FOODLAND|GIANT TIGER|LOBLAWS|FARM BOY|GROCER|SUPERMARKET|FOOD MARKET/],
+ ['Transport',/UBER|LYFT|TRANSIT|PRESTO|VIA RAIL|GREYHOUND|FLIXBUS|PETRO|\bSHELL\b|\bESSO\b|GAS BAR|PARKING|TAXI|AIR CANADA|WESTJET|FLAIR AIR|PORTER AIR/],
+ ['Phone & internet',/FIDO|ROGERS|BELL MOBILITY|BELL CANADA|TELUS|KOODO|FREEDOM MOBILE|PUBLIC MOBILE|VIRGIN PLUS|CHATR|LUCKY MOBILE|FIZZ|COGECO|INTERNET/],
+ ['School',/UNIVERSITY|UWINDSOR|U OF W|TUITION|BOOKSTORE|COLLEGE/],
+ ['Health',/SHOPPERS|PHARMA|REXALL|DENTAL|CLINIC|OPTICAL|GYM|FITNESS|GOODLIFE/],
+ ['Fun',/CINEPLEX|STEAM|PLAYSTATION|XBOX|NINTENDO|TICKETMASTER|LCBO|BEER STORE|CASINO|BOWL/],
+ ['Shopping',/AMAZON|AMZN|DOLLARAMA|CANADIAN TIRE|BEST BUY|IKEA|WINNERS|H&M|UNIQLO|ZARA|SHEIN|TEMU|ALIEXPRESS|HOME DEPOT|STAPLES|SEPHORA|MARSHALLS|OLD NAVY|SPORT CHEK|APPLE STORE|EBAY|ETSY/]
+];
+const isETF=D=>/E-?TFR|E-?TRANSFER|INTERAC/.test(D);
+function autoCat(desc,amt,type,rent){
+  const D=String(desc).toUpperCase();
+  if(type==='credit'&&amt>0&&/PAYMENT|PYMT|THANK YOU/.test(D))return 'Transfer';
+  if(isETF(D)){if(amt<0)return rent>0&&(Math.abs(-amt-rent)<=rent*.02||Math.abs(-amt-rent/2)<=rent*.01)?'Rent':'Other';return 'Income'}
+  if(/\bATM\b|CASH WITHDRA|W\/D/.test(D))return amt<0?'Cash withdrawal':'Income';
+  if(/\bFEE|\bINTEREST|\bNSF\b|OVERDRAFT|SERVICE CHARGE|REBATE/.test(D))return 'Fees & interest';
+  if(type==='credit'&&/CASH ADV/.test(D))return 'Transfer';
+  if(type!=='credit'&&/VISA|MASTERCARD|C\/C|PYMT|\bTFR\b|PTS (TO|FRM)|TRANSFER|LOC PAY/.test(D))return 'Transfer';
+  if(amt>0&&/PAYROLL|SALARY|\bPAY\b|DIRECT DEP|\bGST\b|TAX REFUND|CANADA (FED|PRO)/.test(D))return 'Income';
+  for(const r of RULES)if(r[1].test(D))return r[0];
+  if(/\bRENT\b|LANDLORD|PROPERTY M/.test(D))return 'Rent';
+  if(amt>0&&type!=='credit')return 'Income';
+  return 'Other';
+}
+const mwords=s=>s.replace(/#\s*\d+/g,' ').replace(/\S*\d\S*\d\S*/g,' ').replace(/_[A-Z]\b/g,' ')
+    .replace(/[^A-Z&' ]+/g,' ').replace(/\s+/g,' ').trim().split(' ').filter(w=>w.length>1).slice(0,3).join(' ')||'UNKNOWN';
+/* The merchant's name without store numbers and reference codes. "OPENAI* CH" and "OPENAI *CH" give the same key. */
+function mkey(desc){return mwords(String(desc).toUpperCase().replace(/\*{2,}\S*/g,' ').replace(/\*\s*\S*\d\S*/g,' ').replace(/\*/g,' '))}
+/* The key as it was first built. Category choices saved under it still apply. */
+function mkey0(desc){return mwords(String(desc).toUpperCase().replace(/\*+\S*/g,' '))}
+const ruleOf=(S,desc)=>S.rules[mkey(desc)]||S.rules[mkey0(desc)];
+const pretty=s=>mkey(s).toLowerCase().replace(/(^|[\s&])[a-z]/g,c=>c.toUpperCase());
+
+function parseCSV(text){
+  const rows=[];let row=[],cur='',q=false;
+  const end=()=>{row.push(cur);cur='';if(row.some(c=>c.trim()!==''))rows.push(row);row=[]};
+  for(let i=0;i<text.length;i++){const ch=text[i];
+    if(q){if(ch==='"'){if(text[i+1]==='"'){cur+='"';i++}else q=false}else cur+=ch}
+    else if(ch==='"')q=true;
+    else if(ch===','){row.push(cur);cur=''}
+    else if(ch==='\n'||ch==='\r'){if(ch==='\r'&&text[i+1]==='\n')i++;end()}
+    else cur+=ch}
+  end();return rows;
+}
+const MON={jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
+function parseDate(s){
+  s=String(s==null?'':s).trim();let m,y,mo,d;
+  if(m=s.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/)){y=+m[1];mo=+m[2];d=+m[3]}
+  else if(m=s.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})/)){y=+m[3];mo=+m[1];d=+m[2];if(mo>12&&d<=12){const t=mo;mo=d;d=t}}
+  else if(m=s.match(/^([A-Za-z]{3})[a-z]*\.?\s+(\d{1,2}),?\s+(\d{4})/)){y=+m[3];mo=MON[m[1].toLowerCase()];d=+m[2]}
+  else if(m=s.match(/^(\d{1,2})[-\s]([A-Za-z]{3})[a-z]*\.?[-\s,]+(\d{4})/)){y=+m[3];mo=MON[m[2].toLowerCase()];d=+m[1]}
+  else return null;
+  if(!mo||mo>12||d<1||d>31||y<1990||y>2100)return null;
+  return y+'-'+pad(mo)+'-'+pad(d);
+}
+function num(s){s=String(s==null?'':s).trim();if(!s)return null;const neg=/^\(.*\)$/.test(s)||/^[-−]/.test(s)||/-$/.test(s);const v=parseFloat(s.replace(/[^0-9.]/g,''));return isNaN(v)?null:neg?-v:v}
+function parseStatement(text,type){
+  const rows=parseCSV(String(text).replace(/^﻿/,''));let hi=-1,col=null,split=false;
+  for(let i=0;i<Math.min(rows.length,8);i++){if(rows[i].some(c=>parseDate(c)))break;if(rows[i].some(c=>/date/i.test(c)))hi=i}
+  if(hi>=0){const h=rows[hi].map(c=>c.trim().toLowerCase()),f=(re,not)=>h.findIndex((c,i)=>re.test(c)&&i!==not);
+    const d=f(/date/,-1);col={d,desc:f(/desc|merchant|detail|transaction|payee|name/,d),out:f(/withdraw|debit|paid out|charge/,d),inn:f(/deposit|credit|paid in/,d),bal:f(/balance/,d),amt:f(/amount/,d)}}
+  const out=[];
+  for(let i=hi+1;i<rows.length;i++){const r=rows[i];let c=col;
+    if(!c){const di=r.findIndex(x=>parseDate(x));if(di<0)continue;const n=r.length-di;
+      c=n>=5?{d:di,desc:di+1,out:di+2,inn:di+3,bal:di+4,amt:-1}:n===4?{d:di,desc:di+1,amt:di+2,bal:di+3,out:-1,inn:-1}:{d:di,desc:di+1,amt:di+2,out:-1,inn:-1,bal:-1}}
+    const d=parseDate(r[c.d]);if(!d)continue;let amt;
+    if(c.out>=0||c.inn>=0){split=true;const o=num(r[c.out])||0,n=num(r[c.inn])||0;if(!o&&!n)continue;amt=Math.abs(n)-Math.abs(o)}
+    else{const a=num(r[c.amt]);if(!a)continue;amt=type==='credit'?-a:a}
+    out.push({d,desc:String(r[c.desc]||'').trim().replace(/\s+/g,' ')||'(no description)',amt:Math.round(amt*100)/100,bal:c.bal>=0?num(r[c.bal]):null});
+  }
+  return {rows:out,asc:out.length<2||out[0].d<=out[out.length-1].d,split};
+}
+const isDebt=t=>t==='credit'||t==='loan',eq2=(a,b)=>Math.abs(a-b)<.006;
+/* Reads the balance column to tell a card file (balance rises with each charge) from a bank account file, and counts rows that do not add up. */
+function fileKind(P){
+  const R=P.asc?P.rows:[...P.rows].reverse(),F={kind:null,bad:0,open:null,close:null,first:R.length?R[0].d:null,last:R.length?R[R.length-1].d:null};
+  if(!P.split||R.some(r=>r.bal==null))return F;
+  let dep=0,cr=0,n=0;
+  for(let i=1;i<R.length;i++){n++;if(eq2(R[i-1].bal+R[i].amt,R[i].bal))dep++;if(eq2(R[i-1].bal-R[i].amt,R[i].bal))cr++}
+  if(!n||dep===cr)return F;
+  F.kind=cr>dep?'credit':'deposit';F.bad=n-Math.max(dep,cr);
+  F.open=Math.round((F.kind==='credit'?R[0].bal+R[0].amt:R[0].bal-R[0].amt)*100)/100;F.close=R[R.length-1].bal;
+  return F;
+}
+/* Decides which account a file belongs to. sel is the account the user picked (or null for a new one of selType). */
+function pickAccount(S,sel,selType,F,rows){
+  const acc=S.accounts,have=new Set(S.tx.map(t=>t.id)),fits=id=>!F.kind||isDebt(acc[id].type)===(F.kind==='credit');
+  const chains=id=>rows.some(r=>have.has([id,r.d,r.desc,r.amt,r.bal==null?'':r.bal,1].join('|')))||(F.kind&&acc[id].bal!=null&&acc[id].balDate&&acc[id].balDate<=F.first&&eq2(acc[id].bal,F.open)&&S.tx.some(t=>t.acct===id));
+  const ch=Object.keys(acc).filter(id=>fits(id)&&chains(id));
+  if(sel&&acc[sel]){
+    if(ch.includes(sel)||(!ch.length&&fits(sel)))return {id:sel};
+    if(ch.length===1)return {id:ch[0],moved:true};
+    return fits(sel)?{id:sel}:{skip:true}}
+  if(ch.length===1)return {id:ch[0],moved:true};
+  let type=selType||'chequing',flipped=false;
+  if(F.kind==='credit'&&!isDebt(type)){type='credit';flipped=true}else if(F.kind==='deposit'&&isDebt(type)){type='chequing';flipped=true}
+  return {id:null,type,flipped};
+}
+/* Turns saved data from any earlier version into the current shape. Fields it does not know are kept as they are.
+   Version 1 to 2 only adds: budgets, bought items, and three Setup fields (hourly pay, shift length, extra debt payment). */
+function normalize(P){
+  if(!P||typeof P!=='object'||!P.settings||typeof P.settings!=='object'||!Array.isArray(P.tx))return null;
+  const D=DEF(),S={...D,...P,settings:{...D.settings,...P.settings}};
+  for(const k of ['cash','wish','pend','bought'])if(!Array.isArray(S[k]))S[k]=[];
+  for(const k of ['accounts','rules','seen','budgets'])if(!S[k]||typeof S[k]!=='object'||Array.isArray(S[k]))S[k]={};
+  S.bought=S.bought.filter(b=>b&&b.name&&typeof b.bought==='string');
+  S.tx=S.tx.filter(t=>t&&t.id&&typeof t.d==='string'&&typeof t.amt==='number'&&!isNaN(t.amt));
+  S.v=2;return S;
+}
+const BACKUP_FORMAT=1;
+function makeBackup(S,now){return JSON.stringify({app:'cashbook',format:BACKUP_FORMAT,exported:now,data:S})}
+function readBackup(text){
+  let B;try{B=JSON.parse(String(text).replace(/^﻿/,''))}catch(e){return {ok:false,why:'That file could not be read. It is not a Cashbook backup.'}}
+  if(!B||B.app!=='cashbook'||!B.data)return {ok:false,why:'That file is not a Cashbook backup.'};
+  if(B.format>BACKUP_FORMAT||(+B.data.v||1)>2)return {ok:false,why:'That backup was made by a newer Cashbook than this one, so it was left alone.'};
+  const S=normalize(B.data);if(!S)return {ok:false,why:'That backup is damaged: its settings or transactions are missing.'};
+  const ds=S.tx.map(t=>t.d).sort();
+  return {ok:true,state:S,info:{exported:B.exported||null,tx:S.tx.length,cash:S.cash.length,wish:S.wish.length,accounts:Object.keys(S.accounts).length,from:ds[0]||null,to:ds[ds.length-1]||null}};
+}
+
+const mkCode=()=>{const a='ABCDEFGHJKMNPQRSTUVWXYZ23456789';let c='';for(let i=0;i<4;i++)c+=a[Math.floor(Math.random()*a.length)];return c};
+const DEF=()=>({v:2,saved:0,settings:{payAmount:750,payEvery:14,nextPay:'',rent:600,buffer:300,liveCode:mkCode(),live:false,payAcct:'',hourly:0,shiftHours:0,extraPay:0},accounts:{},tx:[],cash:[],wish:[],rules:{},pend:[],seen:{},budgets:{},bought:[]});
+const tsISO=ts=>{const n=new Date(ts);return n.getFullYear()+'-'+pad(n.getMonth()+1)+'-'+pad(n.getDate())};
+function payAcctOf(S,p){const acc=S.accounts,d=S.settings.payAcct,ids=Object.keys(acc);if(p&&p.acct&&acc[p.acct])return p.acct;if(d&&acc[d])return d;
+  return ids.find(i=>acc[i].type==='credit')||ids.find(i=>acc[i].type==='chequing')||null}
+/* Reads Gmail search results for the one-line receipts the iPhone sends: "Cashbook CODE | amount | merchant | date". */
+function parseLive(payload,code,seen){
+  let P=payload;if(typeof P==='string'){try{P=JSON.parse(P)}catch(e){return []}}
+  const out=[],re=new RegExp('^\\s*cashbook\\s+'+code+'\\s*\\|(.*)$','i');
+  for(const th of(P&&P.threads)||[])for(const m of th.messages||[]){
+    if(!m||!m.id||seen[m.id])continue;const mt=re.exec(String(m.subject||''));if(!mt)continue;
+    const parts=mt[1].split('|'),amt=Math.abs(num(parts[0])||0),ts=+m.internalDate||Date.parse(m.date)||Date.now();
+    out.push({id:m.id,ts,amt:Math.round(amt*100)/100,desc:(parts[1]||'').trim().replace(/\s+/g,' ').slice(0,60)||'Card payment'})}
+  return out;
+}
+
+function nextDue(r,after){
+  if(r.per===30){let y=+r.last.slice(0,4),m=+r.last.slice(5,7);const dom=r.dom||+r.last.slice(8);
+    for(let i=0;i<400;i++){m++;if(m>12){m=1;y++}const dim=new Date(Date.UTC(y,m,0)).getUTCDate(),s=y+'-'+pad(m)+'-'+pad(Math.min(dom,dim));if(s>after)return s}
+    return null}
+  let n=addDays(r.last,r.per);if(n<=after)n=addDays(n,Math.ceil((diff(after,n)+1)/r.per)*r.per);return n;
+}
+function dues(r,from,to){const out=[],cur={...r,dom:r.dom||+r.last.slice(8)};let n,a=from;
+  if(r.per===30&&r.last>from)cur.last=addDays(from,-62);
+  while((n=nextDue(cur,a))&&n<=to){out.push(n);a=n;cur.last=n}return out}
+function detectRecurring(ev,H){
+  const g={},out=[];
+  for(const e of ev){const k=e.cat+'|'+e.key+'|'+(e.amt<0?'-':'+');(g[k]||(g[k]=[])).push(e)}
+  for(const k in g){const L=g[k];if(L.length<2)continue;const c=L[0].cat;
+    const gaps=[];for(let i=1;i<L.length;i++)gaps.push(diff(L[i].d,L[i-1].d));
+    const mg=median(gaps);let per=0;
+    if(mg>=6&&mg<=8)per=7;else if(mg>=13&&mg<=16)per=14;else if(mg>=27&&mg<=33)per=30;
+    if(!per)continue;
+    if(L.length<3&&!(per===30&&(CATS[c]==='fixed'||c==='Subscriptions'||c==='Income')))continue;
+    if(gaps.filter(x=>Math.abs(x-mg)<=(per===30?4:2)).length/gaps.length<.6)continue;
+    const amts=L.map(e=>Math.abs(e.amt)),ma=median(amts),tol=c==='Income'?.45:.3;
+    if(amts.filter(a=>Math.abs(a-ma)<=ma*tol).length/amts.length<.7)continue;
+    const last=L[L.length-1].d;if(diff(H,last)>per*1.7)continue;
+    out.push({key:k,name:L[0].desc,cat:c,amt:median(L.slice(-4).map(e=>e.amt)),per,last,n:L.length});
+  }
+  return out;
+}
+
+/* Rent from Setup, placed on the days it is really paid. A payment of half the rent means it is paid in two halves. */
+function planRent(ev,rent,today){
+  const R=ev.filter(e=>e.cat==='Rent'&&e.amt<0&&e.d>addDays(today,-100)&&e.d<=today),half=R.some(e=>Math.abs(-e.amt-rent/2)<=rent*.01);
+  const pm=ym(addDays(ym(today)+'-01',-1)),parts=half?[[],[]]:[[]],by={},day=L=>Math.round(median(L.map(e=>+e.d.slice(8))));
+  for(const e of R)(by[ym(e.d)]||(by[ym(e.d)]=[])).push(e);
+  for(const m in by){const L=by[m];if(!half)parts[0].push(L[0]);else if(L.length>1){parts[0].push(L[0]);parts[1].push(L[1])}else parts[+L[0].d.slice(8)>15?1:0].push(L[0])}
+  return parts.map((L,i)=>{const dom=L.length?day(L):i?Math.min(28,(parts[0].length?day(parts[0]):1)+15):1;
+    return {key:'SET|rent'+i,name:half?(i?'Rent, second half':'Rent, first half'):'Rent (from Setup)',cat:'Rent',amt:-rent/parts.length,per:30,dom,last:L.length?L[L.length-1].d:pm+'-'+pad(Math.min(28,dom)),n:L.length,synth:1}});
+}
+function analyze(S,today){
+  const A={today},acc=S.accounts,set=S.settings,cat=new Map(),wd={},cs={};
+  for(const t of S.tx){const c=t.cat||ruleOf(S,t.desc)||autoCat(t.desc,t.amt,(acc[t.acct]||{}).type,+set.rent||0);cat.set(t.id,c);
+    if(c==='Cash withdrawal'&&t.amt<0)wd[ym(t.d)]=(wd[ym(t.d)]||0)-t.amt}
+  for(const c of S.cash)if(c.amt<0)cs[ym(c.d)]=(cs[ym(c.d)]||0)-c.amt;
+  let ev=[];
+  for(const t of S.tx){if(t.d>today)continue;const c=cat.get(t.id);if(c==='Transfer')continue;
+    if(c==='Cash withdrawal'){const m=ym(t.d),f=wd[m]>0?Math.max(0,wd[m]-(cs[m]||0))/wd[m]:0;
+      if(f>.001&&t.amt<0)ev.push({d:t.d,amt:t.amt*f,cat:'Untracked cash',desc:'Cash withdrawn, not logged',key:'UNTRACKED CASH'});continue}
+    ev.push({d:t.d,amt:t.amt,cat:c,desc:t.desc,key:mkey(t.desc),id:t.id})}
+  for(const c of S.cash)if(c.d<=today)ev.push({d:c.d,amt:c.amt,cat:c.amt>0?'Income':(c.cat||'Other'),desc:c.note||'Cash',key:'CASH '+String(c.note||c.cat||'').toUpperCase(),cash:1});
+  for(const p of S.pend||[]){const c=p.cat||ruleOf(S,p.desc)||autoCat(p.desc,-p.amt,'credit',0);cat.set(p.id,c);
+    if(p.d<=today&&CATS[c]!=='x')ev.push({d:p.d,amt:-p.amt,cat:c,desc:p.desc,key:mkey(p.desc),id:p.id,pend:1})}
+  ev.sort((a,b)=>a.d<b.d?-1:a.d>b.d?1:0);
+  const first=ev.length?ev[0].d:today,H=ev.length?ev[ev.length-1].d:today;
+  Object.assign(A,{ev,cat,first,H,span:diff(H,first)+1});
+  const months={},mrow=m=>months[m]||(months[m]={m,inc:0,spend:0,cat:{}});
+  for(const e of ev){const r=mrow(ym(e.d));if(e.cat==='Income')r.inc+=e.amt;else{r.spend-=e.amt;r.cat[e.cat]=(r.cat[e.cat]||0)-e.amt}}
+  A.months=Object.values(months).sort((a,b)=>a.m<b.m?-1:1);
+  const cm=ym(today);
+  A.full=A.months.filter(r=>r.m<cm&&r.m<=ym(H)&&(r.m>ym(first)||+first.slice(8)<=3));
+  const catSum=(a,b)=>{const o={};for(const e of ev)if(e.d>a&&e.d<=b&&e.cat!=='Income')o[e.cat]=(o[e.cat]||0)-e.amt;return o};
+  A.last30=catSum(addDays(H,-30),H);A.prev30=catSum(addDays(H,-60),addDays(H,-30));A.has60=A.span>=55;
+
+  let rec=detectRecurring(ev,H);const rentSet=+set.rent||0;
+  const rentPlan=rentSet>0&&!rec.some(r=>r.cat==='Rent'&&r.per===30&&Math.abs(-r.amt-rentSet)<=rentSet*.02)?planRent(ev,rentSet,today):[];
+  if(rentPlan.length)rec=rec.filter(r=>r.cat!=='Rent');
+  const recKeys=new Set(rec.map(r=>r.key));
+  const W=Math.max(1,Math.min(56,A.span)),ws=addDays(H,-W),dc=[0,0,0,0,0,0,0],vs=[0,0,0,0,0,0,0],vt=[0,0,0,0,0,0,0],wk={},oneOff=[];let vi=0;
+  for(let i=0;i<W;i++)dc[dowOf(addDays(H,-i))]++;
+  for(const e of ev){if(e.d<=ws)continue;if(recKeys.has(e.cat+'|'+e.key+'|'+(e.amt<0?'-':'+')))continue;if(rentPlan.length&&e.cat==='Rent'&&e.amt<0)continue;
+    if(Math.abs(e.amt)>=1000){oneOff.push(e);continue}
+    if(e.cat==='Income'){vi+=e.amt;continue}
+    const w=dowOf(e.d);vs[w]-=e.amt;if(TRIM.has(e.cat))vt[w]-=e.amt;
+    const wi=Math.floor(diff(H,e.d)/7);wk[wi]=(wk[wi]||0)-e.amt}
+  for(let i=0;i<7;i++)if(dc[i]){vs[i]/=dc[i];vt[i]/=dc[i]}
+  vi/=W;
+  const nW=Math.max(1,Math.floor(W/7)),wv=[];for(let i=0;i<nW;i++)wv.push(wk[i]||0);
+  const mean=sum(wv)/wv.length,sd=ev.length?Math.sqrt(sum(wv.map(x=>(x-mean)**2))/Math.max(1,wv.length-1)):0;
+  if(!ev.some(e=>e.cat==='Income'&&e.d>addDays(H,-45))&&+set.payAmount>0){const per=Math.max(1,+set.payEvery||14);
+    rec.push({key:'SET|pay',name:'Pay (from Setup)',cat:'Income',amt:+set.payAmount,per:per>=28?30:per,last:set.nextPay?addDays(set.nextPay,-(per>=28?30:per)):addDays(today,-Math.floor(per/2)),n:0,synth:1})}
+  rec.push(...rentPlan);
+  const mPer=p=>p===30?1:30.44/p;
+  const incM=vi*30.44+sum(rec.filter(r=>r.amt>0).map(r=>r.amt*mPer(r.per)));
+  const spendM=sum(vs)*30.44/7+sum(rec.filter(r=>r.amt<0).map(r=>-r.amt*mPer(r.per)));
+  const trimM=sum(vt)*30.44/7+sum(rec.filter(r=>r.amt<0&&TRIM.has(r.cat)).map(r=>-r.amt*mPer(r.per)));
+  A.model={rec,vs,vt,vi,sd,incM,spendM,trimM,surplus:incM-spendM,oneOff,W};
+
+  let liquid=0,debt=0,debtHi=0,intM=0;const cards=[],debts=[],adj={};
+  for(const p of S.pend||[]){const id=payAcctOf(S,p),a=acc[id];if(!a||p.d>today||(a.balDate&&p.d<=a.balDate))continue;adj[id]=(adj[id]||0)+(a.type==='credit'||a.type==='loan'?p.amt:-p.amt)}
+  for(const id in acc){const a=acc[id],b=(+a.bal||0)+(adj[id]||0);
+    if(a.type==='credit'||a.type==='loan'){debt+=b;const apr=a.apr!==''&&a.apr!=null&&!isNaN(+a.apr)?+a.apr:(a.type==='credit'?19.99:0);
+      if(apr>=10&&b>0){debtHi+=b;intM+=b*apr/1200}if(a.type==='credit')cards.push({...a,id,apr,bal:b});if(b>0)debts.push({id,name:a.name,bal:b,apr,min:+a.minPay||0,guess:a.type==='credit'&&(a.apr===''||a.apr==null||isNaN(+a.apr))})}
+    else liquid+=b}
+  Object.assign(A,{liquid,debt,net:liquid-debt,debtHi,intM,cards,debts,hiApr:debtHi?intM*1200/debtHi:0,hasAcc:Object.keys(acc).length>0});
+
+  let nextPay=null;for(const r of rec)if(r.amt>0){const n=nextDue(r,today);if(n&&(!nextPay||n<nextPay))nextPay=n}
+  const isPay=!!nextPay&&diff(nextPay,today)<=31,until=isPay?nextPay:addDays(today,14);let bills=0;
+  for(const r of rec)if(r.amt<0)for(const d of dues(r,today,until))if(d<until||!isPay)bills-=r.amt;
+  const buf=+set.buffer||0;
+  A.free=liquid-buf-bills;A.safe={perDay:Math.max(0,A.free/Math.max(1,diff(until,today))),until,isPay,bills,days:diff(until,today)};
+
+  const dim=new Date(Date.UTC(+cm.slice(0,4),+cm.slice(5),0)).getUTCDate(),eom=cm+'-'+pad(dim);let rem=0;
+  for(let d=addDays(today,1);d<=eom;d=addDays(d,1))rem+=vs[dowOf(d)];
+  for(const r of rec)if(r.amt<0)rem-=r.amt*dues(r,today,eom).length;
+  const mtd=(months[cm]||{spend:0}).spend,f3=A.full.slice(-3);
+  A.pace={mtd,proj:mtd+rem,typical:f3.length?sum(f3.map(r=>r.spend))/f3.length:spendM,left:diff(eom,today)};
+  A.topTrim=Object.entries(A.last30).filter(e=>TRIM.has(e[0])).sort((a,b)=>b[1]-a[1])[0]||null;
+  return A;
+}
+
+function project(A,days,opt){
+  opt=opt||{};const trim=opt.trim||0,M=A.model,t0=A.today,end=addDays(t0,days),due={};
+  for(const r of M.rec){const amt=r.amt<0&&TRIM.has(r.cat)?r.amt*(1-trim):r.amt;for(const d of dues(r,t0,end))due[d]=(due[d]||0)+amt}
+  for(const x of opt.buys||[])due[x.d]=(due[x.d]||0)-x.amt;
+  const out=[{d:t0,y:A.net,lo:A.net,hi:A.net}];let y=A.net;
+  for(let i=1;i<=days;i++){const d=addDays(t0,i),w=dowOf(d);y+=M.vi-(M.vs[w]-trim*M.vt[w])+(due[d]||0)+(opt.daily||0);const b=M.sd*Math.sqrt(i/7);out.push({d,y,lo:y-b,hi:y+b})}
+  return out;
+}
+function history(A,days){
+  const by={},out=[];for(const e of A.ev)by[e.d]=(by[e.d]||0)+e.amt;let y=A.net;
+  for(let i=0;i<=days;i++){const d=addDays(A.today,-i);out.push({d,y});y-=by[d]||0}
+  return out.reverse();
+}
+
+function insights(S,A){
+  const out=[],M=A.model,add=(sev,score,title,body,act)=>out.push({sev,score,title,body,act});
+  if(!A.ev.length){add('info',90,'No transactions yet','Import a TD export or log some cash and this page fills in.','Open Data and add your first file.');return out}
+  if(!A.hasAcc)add('info',88,'Balances are missing','Without what you have and what you owe, the forecast starts from zero.','Add your accounts in Data.');
+  const top=A.topTrim;
+  if(M.surplus<0)add('crit',100,`You spend ${money0(-M.surplus)} a month more than you earn`,`About ${money0(M.incM)} comes in and ${money0(M.spendM)} goes out. That gap comes out of savings or lands on a card.`,top?`Close the gap first. Your largest flexible category is ${top[0]} at ${money0(top[1])} in the last 30 days.`:'Close the gap before buying anything on the wishlist.');
+  else add('good',40,`You keep about ${money0(M.surplus)} a month`,`That is ${Math.round(M.surplus/Math.max(1,M.incM)*100)}% of the ${money0(M.incM)} you bring in.`,A.debtHi>0?`Send it to the ${pct(A.hiApr)}% balance on payday.`:'Move it out of chequing on payday so it does not get spent.');
+  let cardShown=false;
+  for(const c of A.cards){if(!(+c.limit>0)||c.bal<=0)continue;const u=c.bal/c.limit,int=c.bal*c.apr/1200;
+    if(u>=.9){cardShown=true;add('crit',95,`${c.name} is at ${Math.round(u*100)}% of its limit`,`${money0(c.bal)} of ${money0(c.limit)}. At ${c.apr}% that costs about ${money0(int)} a month, and there is almost no room left for an emergency.`,'Stop using it for daily spending and pay more than the minimum every payday.')}
+    else if(u>=.3){cardShown=true;add('warn',60,`${c.name} is using ${Math.round(u*100)}% of its limit`,`${money0(c.bal)} of ${money0(c.limit)}, costing about ${money0(int)} a month in interest. The usual guideline is to stay under 30%.`,`Getting under 30% means paying it down to ${money0(c.limit*.3)}.`)}}
+  if(!cardShown&&A.debtHi>0)add('warn',55,`You carry ${money0(A.debtHi)} at about ${pct(A.hiApr)}%`,`That costs roughly ${money0(A.intM)} a month in interest.`,'Every dollar paid here earns that rate back, guaranteed.');
+  if(A.debtHi>0&&A.free>=100){const pay=Math.min(A.free,A.debtHi);add('warn',85,`You hold cash while paying ${pct(A.hiApr)}% on debt`,`${money0(A.liquid)} sits in your accounts and ${money0(A.debtHi)} sits on high-interest debt.`,`Paying ${money0(pay)} toward it today keeps your buffer and upcoming bills covered, and saves about ${money0(pay*A.hiApr/1200)} a month.`)}
+  const p=A.pace;
+  if(ym(A.H)===ym(A.today)&&p.typical>0){
+    if(p.proj>p.typical*1.12)add('warn',70,`This month is on pace for ${money0(p.proj)}`,`You have spent ${money0(p.mtd)} so far. A typical month is ${money0(p.typical)}, so you are heading ${money0(p.proj-p.typical)} over.`,`${p.left} days left. Holding to ${money0(Math.max(0,(p.typical-p.mtd)/Math.max(1,p.left)))} a day lands you at normal.`);
+    else if(p.proj<p.typical*.9)add('good',30,`This month is running ${money0(p.typical-p.proj)} under your usual`,`On pace for ${money0(p.proj)} against a typical ${money0(p.typical)}.`,'Keep the difference: move it to savings or the card before month end.')}
+  if(A.has60){let up=null,down=null;
+    for(const c in A.last30){if(c==='Rent')continue;const a=A.last30[c],b=A.prev30[c]||0,d=a-b;
+      if(d>=25&&(b===0||d/b>=.2)&&(!up||d>up.d))up={c,a,b,d};if(b>0&&d<=-25&&d/b<=-.2&&(!down||d<down.d))down={c,a,b,d}}
+    if(up)add('warn',65,up.b>0?`${up.c} is up ${Math.round(up.d/up.b*100)}% in the last 30 days`:`${up.c} is new in the last 30 days`,`${money0(up.a)} against ${money0(up.b)} in the 30 days before.`,`Open Spending and tap ${up.c} to see what changed.`);
+    if(down)add('good',25,`${down.c} is down ${Math.round(-down.d/down.b*100)}%`,`${money0(down.a)} against ${money0(down.b)} in the 30 days before.`,'Whatever you changed there is working. Keep it.')}
+  const d90=addDays(A.H,-90),fees=sum(A.ev.filter(e=>e.cat==='Fees & interest'&&e.d>d90).map(e=>-e.amt));
+  if(fees>5)add('warn',62,`You paid ${money0(fees)} in fees and interest`,`That is from the last ${Math.min(90,A.span)} days, and it bought nothing.`,A.debtHi>0?'Paying down the card balance is the only way to shrink it.':'Find which account charges it and ask about a no-fee option.');
+  const d30=addDays(A.H,-30),small=A.ev.filter(e=>e.d>d30&&e.amt<0&&e.amt>-15&&e.cat!=='Fees & interest'&&e.cat!=='Income');
+  if(small.length>=8&&-sum(small.map(e=>e.amt))>=50){const cnt={};small.forEach(e=>cnt[e.key]=(cnt[e.key]||0)+1);const k=Object.entries(cnt).sort((a,b)=>b[1]-a[1])[0];
+    add('info',45,`${small.length} small purchases added up to ${money0(-sum(small.map(e=>e.amt)))}`,`All under $15 each in the last 30 days. The most frequent was ${pretty(k[0])} with ${k[1]} visits.`,'Small ones do not feel like spending. Give them a weekly cap.')}
+  const avg=sum(M.vs)/7,mx=M.vs.indexOf(Math.max(...M.vs));
+  if(avg>3&&M.vs[mx]>=avg*1.6&&A.span>=21)add('info',35,`${DOW[mx]}s are your expensive day`,`About ${money0(M.vs[mx])} on an average ${DOW[mx]}, ${(M.vs[mx]/avg).toFixed(1)} times a normal day.`,`Decide the ${DOW[mx]} budget before the day starts.`);
+  const subs=M.rec.filter(r=>r.cat==='Subscriptions'&&r.amt<0);
+  if(subs.length){const m=sum(subs.map(r=>-r.amt*(r.per===30?1:30.44/r.per)));add('info',30,`${subs.length} subscription${subs.length>1?'s cost':' costs'} ${money0(m)} a month`,`${money0(m*12)} a year: ${subs.map(r=>pretty(r.name)).join(', ')}.`,'Cancel any you have not opened this month.')}
+  const unt=sum(A.ev.filter(e=>e.cat==='Untracked cash'&&e.d>addDays(A.H,-60)).map(e=>-e.amt));
+  if(unt>30)add('warn',50,`${money0(unt)} in cash has no record`,'You withdrew it in the last 60 days and logged nothing against it, so it is counted as spending.','Log cash in Data as you spend it.');
+  const eo=A.last30['Eating out']||0,gr=A.last30.Groceries||0;
+  if(eo>gr&&eo>60){const meals=A.ev.filter(e=>e.cat==='Eating out'&&e.d>d30&&e.amt<0),am=meals.length?-sum(meals.map(e=>e.amt))/meals.length:0;
+    add('info',38,'You spent more eating out than on groceries',`${money0(eo)} against ${money0(gr)} in the last 30 days.`,`Cooking two of those meals a week saves about ${money0(am*8.7)} a month.`)}
+  if(diff(A.today,A.H)>10)add('info',80,`Your data ends ${dshort(A.H)}`,'Everything here is based on transactions up to that date.','Import a fresh TD export in Data.');
+  if(A.span<28)add('info',75,`Only ${A.span} day${A.span>1?'s':''} of history so far`,'Forecasts get reliable with about two months of transactions.','Import older statements too.');
+  return out.sort((a,b)=>b.score-a.score);
+}
+
+function evalWishlist(S,A,trim){
+  const today=A.today,M=A.model,Sx=M.surplus+trim*M.trimM,avail=Math.max(0,A.free),incDay=M.incM/30.44,buf=+S.settings.buffer||0,hourly=+S.settings.hourly||0;
+  const order=(a,b)=>b.need-a.need||a.price-b.price;
+  const needs=S.wish.filter(w=>w.need>=4).sort(order),wants=S.wish.filter(w=>w.need<4).sort(order);
+  const when=c=>c<=avail?today:Sx>0?addDays(today,Math.ceil((c-avail)/Sx*30.44)):null;
+  let cum=0,debtRow=null;const items=[],top=A.topTrim;
+  const judge=(w,ready,before)=>{
+    const isNeed=w.need>=4,cool=isNeed?0:w.price<50?1:w.price<150?7:w.price<500?14:30,waited=Math.max(0,diff(today,w.added||today)),coolLeft=Math.max(0,cool-waited);
+    const r={...w,cool,waited,coolLeft,payDays:incDay>0?w.price/incDay:null,hours:hourly>0?w.price/hourly:null,ready};
+    const viaDebt=!isNeed&&A.debtHi>0;
+    if(viaDebt&&ready!==today){r.verdict='Card first';r.tone='warn';
+      r.why=`You owe ${money0(A.debtHi)} at about ${pct(A.hiApr)}%, which costs roughly ${money0(A.intM)} a month. Putting ${money0(w.price)} toward that balance is a guaranteed ${pct(A.hiApr)}% return. Nothing on this list beats that.`;
+      r.lesson=ready?`Stay on this pace and it is yours around ${dshort(ready)}, paid in cash. On the card it would add about ${money(w.price*A.hiApr/1200)} in interest every month it sits there.`:`At your current pace the balance is not shrinking, so this has no date yet. Use the trim slider to find one.`}
+    else if(ready===today){
+      if(coolLeft>0){r.verdict=`Wait ${coolLeft} day${coolLeft>1?'s':''}`;r.tone='info';r.ready=addDays(today,coolLeft);
+        r.why=`You can afford it today, but it has only been on the list for ${waited} day${waited===1?'':'s'}.`;
+        r.lesson=`Wants at this price get a ${cool}-day pause. If you still want it on ${dshort(r.ready)}, it is a real want and not an impulse.`}
+      else{r.verdict='Buy it';r.tone='good';
+        r.why=viaDebt?`You have enough cash to clear the ${money0(A.debtHi)} high-interest balance first and still pay for this, with your ${money0(buf)} buffer untouched.`:`You have ${money0(avail-before)} free for it after your ${money0(buf)} buffer and the bills due before payday${isNeed?'':`, and you have sat on it for ${waited} days`}.`;
+        r.lesson=(viaDebt?'Pay the card before you buy. ':'')+(r.hours?`It costs ${hrs(r.hours)} of your work. `:r.payDays?`It costs ${r.payDays.toFixed(1)} days of take-home pay. `:'')+'If that trade still feels right, buy it and mark it bought.'}}
+    else if(ready){const short=before+w.price-avail,weeks=Math.max(1,diff(ready,today)/7);r.verdict='Save for it';r.tone='info';
+      if(ready<addDays(today,coolLeft))r.ready=addDays(today,coolLeft);
+      r.why=`You are ${money0(short)} short${before>0?' once the items ahead of it are covered':''}. Your surplus runs about ${money0(Sx)} a month.`;
+      r.lesson=`Set aside ${money0(short/weeks)} a week and you can pay cash around ${dshort(ready)}. No borrowing, no interest.`}
+    else{r.verdict=isNeed?'Needs a plan':'Not now';r.tone='crit';
+      r.why=`You spend ${money0(-Sx)} a month more than you bring in, so no money is on its way to fund this.`;
+      r.lesson=top?`Your largest flexible category is ${top[0]} at ${money0(top[1])} in the last 30 days. Trim it until the surplus turns positive and this gets a date.`:'Get income above spending first. Then this gets a date.'}
+    return r};
+  for(const w of needs){items.push(judge(w,when(cum+w.price),cum));cum+=w.price}
+  if(A.debtHi>0&&wants.length){cum+=A.debtHi;debtRow={name:'High-interest debt cleared',amt:A.debtHi,ready:when(cum)}}
+  for(const w of wants){items.push(judge(w,when(cum+w.price),cum));cum+=w.price}
+  return {items,debtRow,surplus:Sx,avail};
+}
+
+/* ---------- debt payoff ---------- */
+const rate2=n=>String(+(+n).toFixed(2));
+const hrs=h=>h<1?Math.max(1,Math.round(h*60))+' minutes':(+h.toFixed(1)===1?'1 hour':(+h.toFixed(1))+' hours');
+const monthName=m=>dfmt(m+'-01',{month:'long',year:'numeric'});
+/* Month by month: interest is added, each debt gets its minimum (or just its interest when no minimum is entered),
+   then the extra goes to one debt at a time. Minimums freed by a cleared debt roll on to the next one. */
+function payoff(debts,extra,first,today){
+  const D=debts.map(d=>({...d,b:d.bal,int:0,done:null})),order=[...D].sort((a,b)=>first==='small'?a.b-b.b||b.apr-a.apr:b.apr-a.apr||a.b-b.b);
+  const y0=+today.slice(0,4),m0=+today.slice(5,7),when=k=>{const t=m0-1+k;return (y0+Math.floor(t/12))+'-'+pad(t%12+1)};
+  let m=0,total=0;
+  while(D.some(d=>d.b>.005)&&m<600){m++;let pool=extra;
+    for(const d of D){if(d.b<=.005)continue;const i=d.b*d.apr/1200;d.b+=i;d.int+=i;total+=i;d.b-=Math.min(d.b,d.min>0?d.min:i)}
+    for(const d of D)if(d.done&&d.done<m&&d.min>0)pool+=d.min;
+    for(const d of order){if(pool<=.005)break;if(d.b<=.005)continue;const p=Math.min(pool,d.b);d.b-=p;pool-=p}
+    for(const d of D)if(d.b<=.005&&!d.done)d.done=m}
+  const ok=D.every(d=>d.done);
+  return {months:ok?m:null,when:ok?when(m):null,interest:total,first:order.length?order[0].id:null,
+    debts:D.map(d=>({id:d.id,name:d.name,months:d.done,when:d.done?when(d.done):null,interest:d.int}))};
+}
+function debtPlan(A,extra){
+  const D=A.debts||[],t=A.today;if(!D.length)return null;
+  const rate=payoff(D,extra,'rate',t),small=payoff(D,extra,'small',t),bySmall=small.months!=null&&(rate.months==null||small.interest<rate.interest-.5);
+  const plan=bySmall?small:rate,other=bySmall?rate:small,steps=[...new Set([0,25,50,100,200,extra])].sort((a,b)=>a-b);
+  return {plan,order:bySmall?'small':'rate',saves:plan.months!=null&&other.months!=null?other.interest-plan.interest:0,
+    choices:steps.map(x=>{const p=payoff(D,x,bySmall?'small':'rate',t);return {extra:x,months:p.months,when:p.when,interest:p.interest}}),
+    noMin:D.filter(d=>!(d.min>0)).map(d=>d.name)};
+}
+
+/* ---------- budgets ---------- */
+function budgetAverages(A){
+  const f=A.full.slice(-3),avg={};
+  for(const r of f)for(const c in r.cat)if(CATS[c]==='flex'||CATS[c]==='fixed')avg[c]=(avg[c]||0)+r.cat[c]/f.length;
+  for(const c in avg){avg[c]=Math.round(avg[c]);if(avg[c]<1)delete avg[c]}
+  return {n:f.length,avg};
+}
+function budgetStatus(S,A){
+  const t=A.today,cm=ym(t),day=+t.slice(8),dim=new Date(Date.UTC(+cm.slice(0,4),+cm.slice(5),0)).getUTCDate(),left=dim-day,mon=A.months.find(r=>r.m===cm)||{cat:{}},rows=[],f=A.full.slice(-3),fm=new Set(f.map(r=>r.m)),later={};
+  /* What usually still comes after this day of the month, from your own last full months. Handles bills that land in lumps. */
+  for(const e of A.ev)if(e.cat!=='Income'&&fm.has(ym(e.d))&&+e.d.slice(8)>day)later[e.cat]=(later[e.cat]||0)-e.amt/f.length;
+  for(const c in S.budgets||{}){const b=+S.budgets[c];if(!(b>0))continue;
+    const spent=Math.max(0,mon.cat[c]||0),proj=f.length?spent+Math.max(0,later[c]||0):CATS[c]==='flex'?spent/day*dim:spent,room=b-spent;let tone='good',note;
+    if(spent>b+.005){tone='crit';note=`Over by ${money0(spent-b)}${left?` with ${left} day${left===1?'':'s'} left`:''}.`}
+    else if(proj>b*1.05&&(day>=5||spent>=b*.5)){tone='warn';note=`On pace for ${money0(proj)}, which is ${money0(proj-b)} over.${left?` ${money0(room/left)} a day keeps you inside.`:''}`}
+    else note=`${money0(room)} left${left?`, about ${money0(room/left)} a day`:''}.`;
+    rows.push({cat:c,budget:b,spent,proj,tone,note,pct:Math.min(1,spent/b),mark:day/dim})}
+  return rows.sort((a,b)=>b.spent/b.budget-a.spent/a.budget);
+}
+
+/* ---------- bought items and what they taught ---------- */
+const dueReviews=(S,today)=>(S.bought||[]).filter(b=>!b.worth&&diff(today,b.bought)>=30);
+function lessons(S){
+  const R=(S.bought||[]).filter(b=>b.worth),yes=R.filter(b=>b.worth==='yes'),no=R.filter(b=>b.worth==='no'),out=[];
+  if(!R.length)return out;
+  const wait=b=>Math.max(0,diff(b.bought,b.added||b.bought)),cost=L=>money0(sum(L.map(b=>+b.price||0)));
+  out.push(`Worth it: ${yes.length} of ${R.length}.${no.length?` Not worth it: ${no.length}, costing ${cost(no)}.`:''}`);
+  if(yes.length&&no.length){const a=median(no.map(wait)),b=median(yes.map(wait));
+    if(a<b)out.push(`The ones you regret sat on the list for ${a} day${a===1?'':'s'} before you bought them. The ones worth it sat for ${b}.`)}
+  const early=no.filter(b=>b.verdict&&b.verdict!=='Buy it');
+  if(early.length)out.push(`${early.length} of the ${no.length} you regret ${early.length===1?'was':'were'} bought before the verdict said "Buy it".`);
+  const wants=no.filter(b=>b.need<=2);
+  if(wants.length)out.push(`${wants.length} of the ${no.length} you regret ${wants.length===1?'was':'were'} rated "${NEED[1]}" or "${NEED[2]}".`);
+  const hard=yes.filter(b=>b.need>=4);
+  if(hard.length&&hard.length===yes.length&&no.length)out.push('Everything that was worth it was something you rated as a need.');
+  return out;
+}
+
+/* ---------- weekly review ---------- */
+function weekly(S,A){
+  const t=A.today,a0=addDays(t,-7),b0=addDays(t,-14),within=(e,lo,hi)=>e.d>lo&&e.d<=hi;
+  const tot=(lo,hi,inc)=>sum(A.ev.filter(e=>within(e,lo,hi)&&(e.cat==='Income')===inc).map(e=>inc?e.amt:-e.amt));
+  const W={from:addDays(a0,1),to:t,changes:[],leaks:[],actions:[],empty:!A.ev.some(e=>within(e,a0,t))};
+  if(W.empty)return W;
+  const sp=tot(a0,t,false),sp0=tot(b0,a0,false),inc=tot(a0,t,true),inc0=tot(b0,a0,true),prior=A.ev.some(e=>within(e,b0,a0));
+  W.changes.push({title:`You spent ${money0(sp)}`,body:!prior?'There is no earlier week to compare with yet.':Math.round(sp)===Math.round(sp0)?`The same as the week before.`:`${money0(Math.abs(Math.round(sp)-Math.round(sp0)))} ${sp>sp0?'more':'less'} than the week before (${money0(sp0)}).`,tone:prior&&sp>sp0+1?'warn':'good'});
+  W.changes.push({title:`${money0(inc)} came in`,body:prior?`${money0(inc0)} came in the week before.`:'There is no earlier week to compare with yet.',tone:'info'});
+  const H=history(A,7),dn=Math.round(A.net)-Math.round(H[0].y);
+  W.changes.push({k:'net',title:`Net position ${dn>=0?'rose':'fell'} ${money0(Math.abs(dn))}`,body:`It was ${money0(H[0].y)} a week ago and is ${money0(A.net)} today.`,tone:dn>=0?'good':'warn'});
+  const cats={};
+  for(const e of A.ev){if(e.cat==='Income'||e.cat==='Rent')continue;const i=within(e,a0,t)?0:within(e,b0,a0)?1:-1;if(i<0)continue;(cats[e.cat]||(cats[e.cat]=[0,0]))[i]-=e.amt}
+  let up=null;for(const c in cats){const d=cats[c][0]-cats[c][1];if(prior&&d>=10&&(!up||d>up.d))up={c,d,a:cats[c][0],b:cats[c][1]}}
+  if(up)W.changes.push({title:`${up.c} went up ${money0(Math.round(up.a)-Math.round(up.b))}`,body:`${money0(up.a)} this week against ${money0(up.b)} the week before.`,tone:'warn'});
+  const g={};
+  for(const e of A.ev){if(!within(e,a0,t)||e.amt>=0||!(TRIM.has(e.cat)||e.cat==='Fees & interest'))continue;
+    const k=e.cat+'|'+e.key,r=g[k]||(g[k]={cat:e.cat,name:e.cat==='Untracked cash'?'Cash with no record':isETF(String(e.desc).toUpperCase())?'e-Transfers you sent':pretty(e.desc),amt:0,n:0});r.amt-=e.amt;r.n++}
+  W.leaks=Object.values(g).filter(r=>r.amt>=1).sort((a,b)=>b.amt-a.amt||(a.name<b.name?-1:1)).slice(0,3);
+  W.actions=insights(S,A).filter(i=>i.sev!=='good'&&i.act).slice(0,3).map(i=>({title:i.title,act:i.act}));
+  return W;
+}
+
+/* ---------- one-handed logging ---------- */
+/* Amount typing: digits, one decimal point, two decimals at most. */
+const amtText=s=>{s=String(s).replace(/,/g,'.').replace(/[^0-9.]/g,'');const i=s.indexOf('.'),whole=w=>w.replace(/^0+(?=\d)/,'').slice(0,6);
+  return i<0?whole(s):(whole(s.slice(0,i))||'0')+'.'+s.slice(i+1).replace(/\./g,'').slice(0,2)};
+const padKey=(v,k)=>k==='back'?String(v).slice(0,-1):amtText(String(v)+k);
+/* The places you pay most often, for one-tap logging. Built only from your own last 90 days. */
+function quickPlaces(A,n){
+  const from=addDays(A.today,-90),g={};
+  for(const e of A.ev){if(e.d<=from||e.amt>=0||CATS[e.cat]!=='flex'||e.cat==='Untracked cash'||e.cat==='Fees & interest'||e.cat==='Subscriptions'||isETF(String(e.desc).toUpperCase()))continue;
+    const name=e.cash||e.pend?String(e.desc).trim():pretty(e.desc);if(!name||name==='Cash'||name==='Card payment'||name==='Unknown')continue;
+    const k=name.toUpperCase(),r=g[k]||(g[k]={name,n:0,last:''});r.n++;if(e.d>r.last)r.last=e.d}
+  return Object.values(g).sort((a,b)=>b.n-a.n||(a.last<b.last?1:a.last>b.last?-1:0)||(a.name<b.name?-1:1)).slice(0,n||6).map(r=>r.name);
+}
+
+/* ---------- charts as tables ---------- */
+/* A line chart as rows: one every `step` days counted from today, plus the last day. alt is a second projected line, or null. */
+function chartRows(hist,pr,alt,step){
+  const t=pr[0].d,last=pr[pr.length-1].d,am=alt?new Map(alt.map(p=>[p.d,p.y])):null,rows=[];
+  for(const p of hist)if(p.d<t&&diff(t,p.d)%step===0)rows.push({d:p.d,kind:'Actual',y:p.y});
+  for(const p of pr)if(diff(p.d,t)%step===0||p.d===last)rows.push({d:p.d,kind:p.d===t?'Today':'Projected',y:p.y,lo:p.d===t||p.lo==null?null:p.lo,hi:p.d===t||p.hi==null?null:p.hi,alt:am&&p.d>t&&am.has(p.d)?am.get(p.d):null});
+  return rows;
+}
+
+/* ---------- the one answer at the top of each screen. Every number in it comes from S and A. ---------- */
+const pl=(n,one,many)=>n+' '+(n===1?one:many),counts=s=>`${pl(s.tx.length,'transaction','transactions')}, ${pl(s.cash.length,'cash entry','cash entries')} and ${pl(s.wish.length,'wishlist item','wishlist items')}`;
+function topAnswer(view,S,A,x){
+  x=x||{};const t=A.today;
+  if(view==='overview'){const q='How much can I spend today?',s=A.safe,buf=+S.settings.buffer||0,till=s.isPay?'pay on '+dshort(s.until):dshort(s.until);
+    if(!A.hasAcc)return A.ev.length?{q,a:'Add your balances to find out',why:'Your transactions are in. Without what is in each account there is nothing to count from.',go:'data'}
+      :{q,a:'Add your numbers to find out',why:'It needs what is in your accounts and a few weeks of transactions.',go:'data',blank:true};
+    const hold=[buf>0?`your ${money0(buf)} buffer`:'',s.bills>0?`${money0(s.bills)} for bills due before ${till}`:''].filter(Boolean).join(' and '),cash=`You have ${money0(A.liquid)} in cash.`;
+    if(A.free>=1)return {q,a:`${(s.perDay>=10?money0:money)(s.perDay)} today`,why:`${cash} ${hold?`Setting aside ${hold} leaves`:'That is'} ${money0(A.free)} for the ${pl(s.days,'day','days')} until ${till}.`,tone:'good'};
+    return {q,a:'Nothing spare today',why:`${cash} ${hold?`Set aside ${hold} and ${A.free<=-1?`you are ${money0(-A.free)} short`:'nothing is left over'}.`:`Nothing is left to spread over the days until ${till}.`}`,tone:'warn'}}
+  if(view==='spending'){const r=x.month;
+    if(!r)return {q:'Where did my money go?',a:'Nothing to show yet',why:'Import a TD file or log a payment and this page fills in.',go:'data'};
+    const mn=dfmt(r.m+'-01',{month:'long'}),cur=r.m===ym(t),q=`Where did my money go in ${mn}?`,top=Object.entries(r.cat).filter(e=>e[1]>=.5).sort((a,b)=>b[1]-a[1]).slice(0,3),net=r.inc-r.spend;
+    if(!top.length)return {q,a:`Nothing spent in ${mn}`,why:`${money0(r.inc)} came in.`};
+    return {q,a:`${top[0][0]} took the most: ${money0(top[0][1])} of ${money0(r.spend)}`,
+      why:`${top.length>1?`Next ${top.length>2?'were':'was'} ${top.slice(1).map(e=>`${e[0]} at ${money0(e[1])}`).join(' and ')}. `:''}${money0(r.inc)} came in, so ${mn} ${cur?'is':'ended'} ${money0(Math.abs(net))} ${net>=0?'ahead':'short'}${cur?' so far':''}.`,tone:net>=0?'good':'warn'}}
+  if(view==='debt'){const D=A.debts||[],P=x.plan,q=D.length===1?`When is ${D[0].name} paid off?`:D.length?'When are my debts paid off?':'When is my card paid off?';
+    if(!D.length||!P)return {q,a:'You have no debts on record',why:'Add a credit card or loan under Accounts and debts in Data, with what you owe and its interest rate. A payoff plan then appears here.',go:'data'};
+    const p=P.plan,ex=+x.extra||0;
+    if(p.months)return {q,a:monthName(p.when),why:`That is ${pl(p.months,'month','months')} from now${ex>0?`, paying ${money0(ex)} extra a month`:''}. It costs ${money0(p.interest)} in interest on the way.`};
+    return {q,a:'Never, at this rate',why:`${P.noMin.length?'With no extra payment, only each month’s interest is covered, so the balance stays where it is.':'The payments do not cover the interest.'} Move the slider to see what an extra payment does.`,tone:'crit'}}
+  if(view==='wishlist'){const q='Should I buy the next thing on my list?',i=x.R&&x.R.items[0];
+    if(!i)return {q,a:'Your list is empty',why:'Add the thing you keep thinking about and it gets a verdict.'};
+    const v=i.verdict,a=v==='Buy it'?`Yes. Buy ${i.name}`:v==='Card first'?`Not yet. The card comes before ${i.name}`:v==='Save for it'?`Not yet. ${i.name} is ready around ${dshort(i.ready)}`:/^Wait/.test(v)?`Not yet. Give ${i.name} ${pl(i.coolLeft,'more day','more days')}`:`No. ${i.name} has no date yet`;
+    return {q,a,why:i.why,tone:i.tone}}
+  if(view==='review'){const q='What changed this week?',W=x.W;
+    if(!W||W.empty)return {q,a:'Nothing to review this week',why:A.ev.length?`Your latest entry is from ${dshort(A.H)}. Import a fresh TD file or log this week’s spending, then come back.`:'Import a TD file or log some spending first.',go:'data'};
+    const n=W.changes.find(c=>c.k==='net')||W.changes[0];
+    return {q,a:n.title,why:`${n.body} This covers ${dshort(W.from)} to ${dshort(W.to)}.`,tone:n.tone}}
+  const q='Is my data saved?',w=x.where,ds=S.tx.map(r=>r.d).sort(),have=`It holds ${counts(S)}${ds.length?`. The newest transaction is from ${dshort(ds[ds.length-1])}`:''}.`;
+  if(w==='example')return {q,a:'Nothing of yours is saved yet',why:'You are looking at example data. Import a TD file, log a payment or add an account and your own Cashbook starts.'};
+  if(w==='conflict')return {q,a:'Not to your account yet',why:'This device and your account hold different data. Choose which one to keep in the box above.',tone:'crit'};
+  if(w==='unsaved')return {q,a:'No. This browser is not saving',why:'Storage is blocked or full here, so changes are lost when you close the page. Save a backup file below before you leave.',tone:'crit'};
+  if(w==='account'||w==='saving')return {q,a:w==='saving'?'Saving to your account now':'Yes, to your account',why:have,tone:'good'};
+  if(w==='paused')return {q,a:'On this device only, for now',why:`Your account could not be reached, so changes stay in this browser until it can. ${have}`,tone:'warn',retry:true};
+  return {q,a:'Yes, on this device only',why:`${have} It lives in this browser, so clearing the browser’s data removes it. Save a backup file now and then.`};
+}
+
+function demoState(today){
+  let seed=11;const rnd=()=>{seed=(seed*1664525+1013904223)%4294967296;return seed/4294967296},rr=(a,b)=>Math.round((a+rnd()*(b-a))*100)/100;
+  const S=DEF(),chq=[],visa=[],start=addDays(today,-125);
+  for(let i=0;i<=125;i++){const d=addDays(start,i),w=dowOf(d),dom=+d.slice(8),hot=i>95?1.9:1;
+    if(w===5&&Math.floor(i/7)%2===0)chq.push([d,'PAYROLL DEPOSIT',rr(715,790)]);
+    if(dom===1)chq.push([d,'SEND E-TFR ***R8k',-600]);
+    if(dom===12)visa.push([d,'FIDO MOBILE',-39.55]);
+    if(dom===5)visa.push([d,'SPOTIFY P2F81C',-6.77]);
+    if(dom===18)visa.push([d,'APPLE.COM/BILL',-4.51]);
+    if(dom===20){chq.push([d,'TD VISA PREAUTH PYMT',-150]);visa.push([d,'PAYMENT - THANK YOU',150])}
+    if(dom===27)visa.push([d,'PURCHASE INTEREST',-rr(16,24)]);
+    if(i===40)chq.push([d,'UNIVERSITY OF WINDSOR',-880]);
+    if(w===0)chq.push([d,'FOOD BASICS #862',-rr(38,60)]);
+    if(w===2&&i%14<7)chq.push([d,'ASIAN BASKET WINDSOR',-rr(18,30)]);
+    if(rnd()<.3*hot)visa.push([d,'TIM HORTONS #2291',-rr(3.5,8.5)]);
+    if((w===5||w===6)&&rnd()<.42*hot)visa.push([d,'UBER EATS',-rr(21,36)]);
+    if(rnd()<.1*hot)visa.push([d,"MCDONALD'S #40413",-rr(9,14)]);
+    if(rnd()<.07)visa.push([d,'UBER CANADA/UBERTRIP',-rr(9,17)]);
+    if(rnd()<.05)visa.push([d,'AMZN MKTP CA',-rr(14,62)]);
+    if(rnd()<.06)chq.push([d,'DOLLARAMA #1123',-rr(5,18)]);
+    if(dom===8||dom===23)chq.push([d,'TD ATM W/D 004521',-60]);
+    if(i%6===3)S.cash.push({id:'c'+i,d,amt:-rr(6,15),cat:'Eating out',note:'Bubble tea'});
+  }
+  const load=(id,rows,bal,sign)=>{rows.forEach((r,i)=>{bal=Math.round((bal+sign*r[2])*100)/100;S.tx.push({id:[id,r[0],r[1],r[2],bal,1].join('|'),d:r[0],desc:r[1],amt:r[2],acct:id,bal,n:1})});return bal};
+  S.accounts={chq:{name:'TD Chequing',type:'chequing',bal:load('chq',chq,70,1),balDate:today},visa:{name:'TD Visa',type:'credit',bal:load('visa',visa,820,-1),limit:2000,apr:20.99,balDate:today}};
+  S.wish=[{id:'w1',name:'Winter boots',price:140,need:4,added:addDays(today,-3)},{id:'w2',name:'Noise-cancelling headphones',price:329,need:2,added:addDays(today,-20)},{id:'w3',name:'Mechanical keyboard',price:95,need:1,added:addDays(today,-2)}];
+  S.settings.hourly=17.5;S.settings.shiftHours=6;S.accounts.visa.minPay=40;S.budgets={Groceries:230,'Eating out':160,Shopping:60};
+  S.bought=[{id:'b1',name:'Desk lamp',price:38,need:3,added:addDays(today,-70),bought:addDays(today,-52),verdict:'Buy it',worth:'yes',asked:addDays(today,-22)},{id:'b2',name:'Gaming mouse',price:89,need:1,added:addDays(today,-36),bought:addDays(today,-35),verdict:'Wait 6 days'}];
+  return S;
+}
+/*END CORE*/
+
+/* ---------- state + storage ---------- */
+const q=s=>document.querySelector(s),esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const todayISO=()=>{const n=new Date();return n.getFullYear()+'-'+pad(n.getMonth()+1)+'-'+pad(n.getDate())};
+const LS='cashbook.v1',VIEWS=['overview','spending','debt','wishlist','data','review'];
+let TODAY=todayISO(),S=null,demo=true,A=null;
+const ui={tbl:{},loading:false,qfrom:null,view:'overview',range:90,spanM:6,month:null,q:'',fcat:'',shown:40,sim:{},trim:0,msg:null,arm:null,restore:null,bmsg:null,extra:null,bedit:false,sc:{shift:false,card:false,once:false,amt:'',d:''}};
+const store={col:null,dirty:new Set(),busy:false,timer:0,err:null,state:'local',ls:null,uid:null,conflict:null,pending:null,tries:0};
+/* Layout choices this device remembers (chart or table). Not part of the saved Cashbook data. */
+const UIK='cashbook.ui',SK='cashbook.sync';
+try{Object.assign(ui.tbl,JSON.parse(localStorage.getItem(UIK)||'{}').tbl||{})}catch(e){}
+const saveUi=()=>{try{localStorage.setItem(UIK,JSON.stringify({tbl:ui.tbl}))}catch(e){}};
+const lsSet=()=>{try{localStorage.setItem(LS,JSON.stringify(S));store.ls=true}catch(e){store.ls=false}};
+/* Set once this browser's copy and the account's copy have been the same data. Until then neither overwrites the other without asking. */
+const synced=u=>{try{return localStorage.getItem(SK)===u}catch(e){return false}},markSynced=()=>{try{if(store.uid)localStorage.setItem(SK,store.uid)}catch(e){}};
+/* Says a result out loud for screen readers. */
+const say=t=>{const el=q('#say');if(!el)return;el.textContent='';setTimeout(()=>{el.textContent=t},60)};
+
+const saveWhere=()=>demo?'example':store.conflict?'conflict':store.col&&!store.err?(store.dirty.size||store.busy?'saving':'account'):store.ls===false?'unsaved':store.err?'paused':'device';
+function setSync(){const el=q('#sync');if(!el)return;const w=ui.loading?'loading':saveWhere();
+  el.className='sync'+(w==='example'?' demo':w==='account'||w==='saving'?' ok':w==='unsaved'||w==='conflict'?' bad':'');
+  el.textContent={loading:'Loading…',example:'Example data',saving:'Saving…',account:'Saved to your account',unsaved:'Not saved',conflict:'On this device · account differs',paused:'Saved on this device · sync paused',device:'Saved on this device'}[w];
+  const box=q('#ans-data');if(box&&A&&box.dataset.w!==w){const had=box.contains(document.activeElement);box.dataset.w=w;box.innerHTML=ansHTML(topAnswer('data',S,A,{where:w}));if(had){const h=q('#ans');if(h)h.focus({preventScroll:true})}}}const monthsOf=()=>[...new Set(S.tx.map(t=>ym(t.d)))].sort();
+const packMonth=m=>S.tx.filter(t=>ym(t.d)===m).map(t=>[t.d,t.desc,t.amt,t.acct,t.cat||'',t.bal==null?'':t.bal,t.n||1]);
+const unpack=r=>({id:[r[3],r[0],r[1],r[2],r[5],r[6]].join('|'),d:r[0],desc:r[1],amt:r[2],acct:r[3],cat:r[4]||undefined,bal:r[5]===''?null:r[5],n:r[6]});
+function save(keys){
+  undo=null;if(demo)return;S.saved=Date.now();
+  /* "Keep this device's data" was chosen and not undone: only now does the account get replaced. */
+  if(store.pending){const c=store.pending;store.pending=null;store.col=c.col;keys=[...new Set([...keys,...allKeys(),...c.keys])]}
+  lsSet();
+  if(store.col){keys.forEach(k=>store.dirty.add(k));clearTimeout(store.timer);store.timer=setTimeout(flush,700)}
+  setSync();
+}
+async function flush(){
+  if(store.busy||!store.col)return;store.busy=true;let k;
+  try{while(store.dirty.size){k=store.dirty.values().next().value;store.dirty.delete(k);const ref=store.col.doc(k);
+      if(k==='meta'){const {tx,...rest}=S;await ref.set({j:JSON.stringify(rest)})}
+      else{const rows=packMonth(k.slice(3));if(rows.length)await ref.set({j:JSON.stringify(rows)});else await ref.delete()}}
+    store.err=null;store.tries=0;markSynced()}
+  catch(e){store.err=(e&&e.code)||'unavailable';if(k)store.dirty.add(k);if(++store.tries<=3){clearTimeout(store.timer);store.timer=setTimeout(flush,15000*store.tries)}}
+  store.busy=false;setSync();if(store.err&&store.ls===false)later();
+}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'&&store.dirty.size){clearTimeout(store.timer);flush()}});
+const allKeys=()=>['meta',...monthsOf().map(m=>'tx-'+m)];
+async function connect(){
+  const done=()=>{if(ui.loading){ui.loading=false;render()}else setSync()};
+  let db=null,user=null,uid=null;
+  try{if(window.claude&&window.claude.use){[db,user]=await Promise.all([window.claude.use('db'),window.claude.use('user')]);uid=user?await user.id():null}}catch(e){}
+  if(!db||!uid){done();return}
+  let snap;const col=db.collection('data/users/'+uid);
+  try{snap=await Promise.race([col.get(),new Promise((_,r)=>setTimeout(()=>r({code:'unavailable'}),10000))])}catch(e){store.err='unavailable';ui.loading=false;render();return}
+  store.err=null;store.uid=uid;const docs={};snap.docs.forEach(d=>{docs[d.id]=d.data()});
+  let meta=null,N=null;try{meta=docs.meta&&JSON.parse(docs.meta.j)}catch(e){}
+  if(meta){const txs=[];
+    for(const id in docs)if(id.startsWith('tx-'))try{JSON.parse(docs[id].j).forEach(r=>txs.push(unpack(r)))}catch(e){}
+    N=normalize({...meta,tx:txs})}
+  const newer=!demo&&(!meta||(meta.saved||0)<(S.saved||0));
+  /* This device has changes the account has never seen, and the account holds data too. Neither side is overwritten until you choose. */
+  if(N&&newer&&!synced(uid)){store.conflict={acct:N,col,keys:Object.keys(docs)};ui.loading=false;render();return}
+  store.col=col;
+  if(N&&!newer){S=N;demo=false;undo=null;ui.extra=null;ui.loading=false;lsSet();markSynced();if(!(meta.settings&&meta.settings.liveCode))save(['meta']);render()}
+  else if(!demo)save(allKeys());
+  done();
+}function leaveDemo(){if(demo){S=DEF();demo=false;ui.sim={};ui.month=null;ui.fcat='';ui.extra=null}}
+async function clearSaved(keys){
+  try{localStorage.removeItem(LS)}catch(e){}
+  if(store.col){clearTimeout(store.timer);store.dirty.clear();try{const s=await store.col.get();for(const d of s.docs)await store.col.doc(d.id).delete()}catch(e){for(const k of keys)try{await store.col.doc(k).delete()}catch(x){}}}
+}
+
+/* ---------- undo and backup ---------- */
+/* One step of undo, kept only while the page is open. Any other change to the data drops it, so an undo can never wipe newer work. */
+let undo=null;
+const snap=()=>({S:JSON.parse(JSON.stringify(S)),demo,keys:demo?[]:allKeys()});
+function offerUndo(label,before){undo={label,before};showUndo()}
+function showUndo(){const el=q('#undo');if(!el)return;el.hidden=!undo;
+  el.innerHTML=!undo?'':`<span>${esc(undo.label)}</span>${undo.before||undo.conflict?'<button class="btn small" data-act="undo">Undo</button>':''}<button class="btn ghost small" data-act="undox" aria-label="Dismiss this message">✕</button>`}
+async function doUndo(){
+  const u=undo;if(!u)return;
+  /* Undoing a choice between two copies puts both back exactly as they were and asks again. */
+  if(u.conflict){if(u.mine){S=u.mine;lsSet();try{localStorage.removeItem(SK)}catch(e){}}store.pending=null;store.col=null;store.conflict=u.conflict;ui.extra=null;ui.sim={};ui.month=null;undo={label:'Put back. Both copies are as they were.'};render();return}
+  if(!u.before)return;const now=demo?[]:allKeys();
+  S=u.before.S;demo=u.before.demo;ui.sim={};ui.month=null;ui.arm=null;ui.restore=null;ui.msg=null;ui.bmsg=null;ui.extra=null;
+  if(demo)await clearSaved(now);else{save([...new Set([...now,...u.before.keys])]);if(!live.unsub)liveInit()}
+  undo={label:'Put back.'};render();
+}
+async function saveBackup(){
+  const name='cashbook-backup-'+TODAY+'.json',data=makeBackup(S,new Date().toISOString()),inClaude=!!(window.claude&&window.claude.use);let dl=null;
+  try{dl=inClaude?await window.claude.use('downloads'):null}catch(e){}
+  if(inClaude&&!dl){ui.bmsg={ok:false,text:'Saving files is not available in this view, so no backup was made. Open the Cashbook on claude.ai in a browser and try again.'};render();return}
+  try{
+    if(dl)await dl.save({filename:name,data});
+    else{const u=URL.createObjectURL(new Blob([data],{type:'application/json'})),l=document.createElement('a');l.href=u;l.download=name;document.body.appendChild(l);l.click();l.remove();setTimeout(()=>URL.revokeObjectURL(u),4000)}
+    ui.bmsg={ok:true,text:`${dl?'Saved':'Sent to your downloads as'} ${name}: ${counts(S)}. Keep the file somewhere safe.`}}
+  catch(e){ui.bmsg={ok:false,text:e&&e.code==='declined'?'Backup cancelled. No file was saved.':'The backup could not be saved from here. Try again in a moment.'}}
+  say(ui.bmsg.text);render();
+}
+async function pickRestore(file){
+  let text='';try{text=await file.text()}catch(e){}
+  const R=readBackup(text);
+  if(R.ok){ui.restore={state:R.state,info:R.info};ui.bmsg=null}else{ui.restore=null;ui.bmsg={ok:false,text:R.why}}
+  say(R.ok?'Backup read. Confirm below to replace what is here.':R.why);render();
+}
+function doRestore(){
+  const r=ui.restore;if(!r)return;const before=snap(),prev=demo?[]:allKeys();
+  S=r.state;demo=false;ui.restore=null;ui.msg=null;ui.extra=null;ui.sim={};ui.month=null;ui.fcat='';
+  save([...new Set([...prev,...allKeys()])]);offerUndo('Restored from the backup.',before);
+  ui.bmsg={ok:true,text:`Restored ${counts(S)}.`};say(ui.bmsg.text);render();if(!live.unsub)liveInit();
+}
+
+/* ---------- charts ---------- */
+function niceTicks(lo,hi,n){const raw=(hi-lo||1)/n,p=Math.pow(10,Math.floor(Math.log10(raw))),f=raw/p,step=(f<1.5?1:f<3?2:f<7?5:10)*p,out=[];
+  for(let v=Math.ceil(lo/step)*step;v<=hi+1e-9;v+=step)out.push(Math.round(v*100)/100);return out}
+const tip=q('#tip'),near=(e,s)=>e.target&&e.target.closest?e.target.closest(s):null;let tipAt=0;
+function showTip(text,x,y,above){tip.textContent=text;tip.hidden=false;const r=tip.getBoundingClientRect();let l=above?x-r.width/2:x+14,t=above?y-r.height-16:y+14;
+  if(l+r.width>innerWidth-8)l=above?innerWidth-8-r.width:x-r.width-14;if(l<8)l=8;if(t+r.height>innerHeight-8)t=y-r.height-14;if(t<8)t=above?y+22:8;tip.style.left=l+'px';tip.style.top=t+'px'}
+const hideTip=()=>{tip.hidden=true;document.querySelectorAll('.hov').forEach(h=>h.setAttribute('visibility','hidden'))};
+/* Details for a chart mark: on hover with a mouse, on tap with a finger (they stay until you tap elsewhere), and on focus with the keyboard. */
+document.addEventListener('pointermove',e=>{if(e.pointerType!=='mouse')return;const t=near(e,'[data-tip]');if(t)showTip(t.dataset.tip,e.clientX,e.clientY);else if(!near(e,'.linechart'))tip.hidden=true});
+document.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse')return;const t=near(e,'[data-tip]');if(t){tipAt=Date.now();showTip(t.dataset.tip,e.clientX,e.clientY,true)}else if(!near(e,'.linechart'))hideTip()},true);
+document.addEventListener('focusin',e=>{const t=near(e,'[data-tip]');if(t&&t.matches(':focus-visible')){const r=t.getBoundingClientRect();showTip(t.dataset.tip,r.left+r.width/2,r.top,true)}});
+document.addEventListener('focusout',e=>{if(near(e,'[data-tip]')&&Date.now()-tipAt>500)tip.hidden=true});
+document.addEventListener('scroll',hideTip,true);
+document.addEventListener('keydown',e=>{if(e.key==='Escape')hideTip();else if((e.key==='Enter'||e.key===' ')&&e.target.matches&&e.target.matches('rect[data-act]')){e.preventDefault();e.target.dispatchEvent(new MouseEvent('click',{bubbles:true}))}});
+function lineChart(el,o){
+  const W=Math.max(260,el.clientWidth||600),H=o.h||250,m={l:56,r:12,t:18,b:24},iw=W-m.l-m.r,ih=H-m.t-m.b,ys=[];
+  o.series.forEach(s=>s.pts.forEach(p=>ys.push(p.y)));(o.band||[]).forEach(p=>ys.push(p.lo,p.hi));
+  let lo=Math.min(...ys),hi=Math.max(...ys);if(hi-lo<60){hi+=30;lo-=30}const pd=(hi-lo)*.08;lo-=pd;hi+=pd;
+  const x0=toD(o.from),x1=toD(o.to),X=d=>m.l+(toD(d)-x0)/(x1-x0)*iw,Y=v=>m.t+(hi-v)/(hi-lo)*ih;let g='';
+  for(const v of niceTicks(lo,hi,4))g+=`<line class="grid${v===0?' zero':''}" x1="${m.l}" x2="${W-m.r}" y1="${Y(v).toFixed(1)}" y2="${Y(v).toFixed(1)}"/><text class="ax" x="${m.l-8}" y="${(Y(v)+4).toFixed(1)}" text-anchor="end">${money0(v)}</text>`;
+  const n=W<440?3:5,nd=Math.round((x1-x0)/DAY);
+  for(let i=0;i<=n;i++){const d=iso(x0+Math.round(nd*i/n)*DAY);g+=`<text class="ax" x="${X(d).toFixed(1)}" y="${H-6}" text-anchor="${i===0?'start':i===n?'end':'middle'}">${dshort(d)}</text>`}
+  if(o.band&&o.band.length>1)g+=`<path class="band" d="M${o.band.map(p=>X(p.d).toFixed(1)+','+Y(p.hi).toFixed(1)).join('L')}L${[...o.band].reverse().map(p=>X(p.d).toFixed(1)+','+Y(p.lo).toFixed(1)).join('L')}Z"/>`;
+  if(o.now&&o.now>o.from)g+=`<line class="now" x1="${X(o.now)}" x2="${X(o.now)}" y1="${m.t-6}" y2="${m.t+ih}"/><text class="ax" x="${X(o.now)+5}" y="${m.t+2}">Today</text>`;
+  for(const s of o.series)if(s.pts.length>1)g+=`<path class="ln ${s.cls}${s.dash?' dash':''}" d="M${s.pts.map(p=>X(p.d).toFixed(1)+','+Y(p.y).toFixed(1)).join('L')}"/>`;
+  for(const s of o.series)if(s.end&&s.pts.length){const p=s.pts[s.pts.length-1];g+=`<circle class="dot ${s.cls}" r="4.5" cx="${X(p.d).toFixed(1)}" cy="${Y(p.y).toFixed(1)}"/>`}
+  g+=`<g class="hov" visibility="hidden"><line class="cross" y1="${m.t}" y2="${m.t+ih}"/>${o.series.map(s=>`<circle r="4.5" class="dot ${s.cls}"/>`).join('')}</g>`;
+  el.innerHTML=`<svg class="linechart" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" tabindex="0" aria-label="${esc(o.label)} Use the left and right arrow keys to read one day at a time, or switch to the table.">${g}</svg>`;
+  const svg=el.firstChild,hov=svg.querySelector('.hov'),cross=hov.querySelector('.cross'),dots=[...hov.querySelectorAll('circle')],maps=o.series.map(s=>new Map(s.pts.map(p=>[p.d,p.y])));let cur=null;
+  const leave=()=>{hov.setAttribute('visibility','hidden');tip.hidden=true;cur=null};
+  /* Shows the values for day number i. With no pointer position (keyboard), the label sits above the highest point. */
+  const at=(i,cx,cy,above)=>{cur=Math.max(0,Math.min(nd,i));const d=iso(x0+cur*DAY),x=X(d),lines=[dlong(d)];let top=m.t+ih;cross.setAttribute('x1',x);cross.setAttribute('x2',x);
+    dots.forEach((c,j)=>{const y=maps[j].get(d);if(y==null)c.setAttribute('visibility','hidden');else{c.setAttribute('visibility','inherit');c.setAttribute('cx',x);c.setAttribute('cy',Y(y));top=Math.min(top,Y(y));lines.push(o.series[j].name+': '+money0(y))}});
+    hov.setAttribute('visibility','visible');const r=svg.getBoundingClientRect();showTip(lines.join('\n'),cx==null?r.left+x:cx,cy==null?r.top+top:cy,above)};
+  const move=e=>{const r=svg.getBoundingClientRect(),px=e.clientX-r.left;if(px<m.l-8||px>W-m.r+8){leave();return}at(Math.round(Math.max(0,Math.min(1,(px-m.l)/iw))*nd),e.clientX,e.clientY,e.pointerType!=='mouse')};
+  svg.addEventListener('pointermove',move);svg.addEventListener('pointerdown',move);svg.addEventListener('pointerleave',e=>{if(e.pointerType==='mouse')leave()});svg.addEventListener('blur',leave);
+  svg.addEventListener('keydown',e=>{const k=e.key,step=e.shiftKey?7:1,start=o.now&&o.now>=o.from?Math.round((toD(o.now)-x0)/DAY):0;
+    if(k==='ArrowRight')at(cur==null?start:cur+step,null,null,true);else if(k==='ArrowLeft')at(cur==null?start:cur-step,null,null,true);else if(k==='Home')at(0,null,null,true);else if(k==='End')at(nd,null,null,true);else if(k==='Escape')leave();else return;e.preventDefault()});
+}
+function monthChart(el,rows,sel){
+  const W=Math.max(260,el.clientWidth||600),H=230,m={l:56,r:8,t:10,b:44},iw=W-m.l-m.r,ih=H-m.t-m.b,n=rows.length,band=iw/n,bw=Math.max(5,Math.min(24,(band-12)/2));
+  const hi=Math.max(1,...rows.map(r=>Math.max(r.inc,r.spend)))*1.08,Y=v=>m.t+(hi-v)/hi*ih,y0=m.t+ih;let g='';
+  for(const v of niceTicks(0,hi,4))g+=`<line class="grid${v===0?' zero':''}" x1="${m.l}" x2="${W-m.r}" y1="${Y(v).toFixed(1)}" y2="${Y(v).toFixed(1)}"/><text class="ax" x="${m.l-8}" y="${(Y(v)+4).toFixed(1)}" text-anchor="end">${money0(v)}</text>`;
+  const bar=(x,v,cls)=>{const h=Math.max(0,y0-Y(Math.max(0,v))),r=Math.min(4,h,bw/2),y=y0-h;return h<.5?'':`<path class="${cls}" d="M${x},${y0}V${y+r}Q${x},${y} ${x+r},${y}H${x+bw-r}Q${x+bw},${y} ${x+bw},${y+r}V${y0}Z"/>`};
+  rows.forEach((r,i)=>{const cx=m.l+band*i+band/2,on=r.m===sel,net=r.inc-r.spend,skip=band<44&&i%2!==(n-1)%2;
+    if(on)g+=`<rect class="selband" x="${m.l+band*i+2}" y="${m.t}" width="${band-4}" height="${ih+38}" rx="6"/>`;
+    g+=bar(cx-bw-1,r.inc,'b3')+bar(cx+1,r.spend,'b2');
+    if(!skip)g+=`<text class="mlab${on?' on':''}" x="${cx}" y="${y0+16}" text-anchor="middle">${dfmt(r.m+'-01',{month:'short'})}</text><text class="mnet" x="${cx}" y="${y0+31}" text-anchor="middle">${signed(net)}</text>`;
+    g+=`<rect class="hit" tabindex="0" role="button" aria-pressed="${on}" aria-label="${esc(monthName(r.m)+': '+money0(r.inc)+' in, '+money0(r.spend)+' out, '+signed(net)+' left over')}" data-act="month" data-m="${r.m}" data-tip="${esc(dfmt(r.m+'-01',{month:'long',year:'numeric'})+'\nIn: '+money0(r.inc)+'\nOut: '+money0(r.spend)+'\nNet: '+signed(net))}" x="${m.l+band*i}" y="${m.t}" width="${band}" height="${ih+40}"/>`});
+  el.innerHTML=`<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="group" aria-label="Income and spending by month. Each month is a button.">${g}</svg>`;
+}
+function spark(vals,text){const w=84,h=22,mx=Math.max(1,...vals),n=vals.length;if(n<2)return '';
+  const pts=vals.map((v,i)=>[(3+i*(w-8)/(n-1)).toFixed(1),(h-3-v/mx*(h-7)).toFixed(1)]);
+  return `<span class="sp" role="img" aria-label="${esc(text.replace(/\n/g,', '))}" data-tip="${esc(text)}"><svg class="spark" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-hidden="true"><polyline points="${pts.map(p=>p.join(',')).join(' ')}"/><circle r="2.5" cx="${pts[n-1][0]}" cy="${pts[n-1][1]}"/></svg></span>`}
+/* ---------- live card payments (Gmail) ---------- */
+const live={mcp:null,unsub:null,state:'off',at:0};
+const gq=()=>({query:`subject:cashbook subject:${S.settings.liveCode} newer_than:30d`,pageSize:50});
+async function getMcp(){if(live.mcp)return live.mcp;try{live.mcp=window.claude&&window.claude.use?await window.claude.use('mcp'):null}catch(e){live.mcp=null}return live.mcp}
+function liveErr(e){const c=e&&e.code;
+  live.state=['not_in_manifest','approval_required','consent_required','not_granted'].includes(c)?'denied':c==='needs_reauth'?'reauth':['server_not_connected','selection_required','server_not_found'].includes(c)?'noconn':c==='blocked_by_policy'?'blocked':['capability_disabled','capability_removed'].includes(c)?'none':'retry'}
+function ingest(payload){
+  const found=parseLive(payload,S.settings.liveCode,S.seen);if(!found.length)return;let added=0;
+  for(const f of found){S.seen[f.id]=f.ts;if(f.amt>0){S.pend.push({id:'p'+f.id,d:tsISO(f.ts),amt:f.amt,desc:f.desc,acct:'',src:'live',ts:f.ts});added++}}
+  const cut=Date.now()-45*DAY;for(const k in S.seen)if(S.seen[k]<cut)delete S.seen[k];
+  save(['meta']);if(added)render();
+}
+function watchLive(){
+  if(live.unsub){live.unsub();live.unsub=null}
+  live.unsub=live.mcp.watchTool('Gmail','search_threads',gq(),ev=>{
+    if(ev.type==='data'){live.state='on';live.at=(ev.result.cache&&ev.result.cache.storedAt)||Date.now();ingest(ev.result.payload)}else liveErr(ev.error);
+    setLive()},{refetchInterval:60000});
+}
+async function liveInit(){if(demo||!S.settings.live)return;if(!(await getMcp())){live.state='none';setLive();return}watchLive()}
+async function liveConnect(){
+  leaveDemo();if(!(await getMcp())){live.state='none';setLive();return}
+  live.state='asking';setLive();
+  try{const r=await live.mcp.callTool('Gmail','search_threads',gq(),{cache:{refresh:true}});live.state='on';live.at=Date.now();
+    if(!S.settings.live){S.settings.live=true;save(['meta'])}ingest(r.payload);if(!live.unsub)watchLive()}
+  catch(e){liveErr(e)}
+  setLive();
+}
+function liveStatus(){
+  const st=live.state,t=live.at?new Date(live.at).toLocaleTimeString('en-CA',{hour:'numeric',minute:'2-digit'}):'';
+  const m={off:['Not connected yet. Do the iPhone setup first, then connect.','Connect Gmail'],asking:['Waiting for you to allow Gmail…',''],
+    on:[`Connected. Last checked ${t}. It checks again every minute while this page is open.`,'Check now'],
+    retry:[`Could not reach Gmail just now${t?' (last good check '+t+')':''}. It will try again by itself.`,'Check now'],
+    denied:['Gmail access was not allowed for this page, so nothing is being read.','Allow Gmail'],
+    reauth:['Your Gmail connection expired. Reconnect Gmail in claude.ai Settings → Connectors, then press the button.','Try again'],
+    noconn:['Gmail is not connected to your Claude account. Add it in claude.ai Settings → Connectors, then press the button.','Try again'],
+    blocked:['Your organization blocks Gmail access from pages like this one.',''],
+    none:['Live reading only works while this page is open inside Claude.','']}[st];
+  return `<p class="msg${st==='on'?' ok':['off','asking','retry'].includes(st)?'':' bad'}" role="status">${esc(m[0])}</p>${m[1]?`<button class="btn${st==='on'?' ghost':''} small" data-act="liveconnect" style="justify-self:start">${m[1]}</button>`:''}`;
+}
+function setLive(){const c=q('#livechip');if(c){c.hidden=live.state!=='on';c.textContent='Live'}const el=q('#live-status');if(el)el.innerHTML=liveStatus()}
+
+/* ---------- views ---------- */
+const PILL={crit:'■ Urgent',warn:'▲ Watch',good:'● Good',info:'◆ Note'};
+function banner(){
+  let h='';const when=ts=>ts?new Date(ts).toLocaleString('en-CA',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'an unknown time';
+  if(store.conflict)h+=`<div class="banner bad" role="alert"><p><b>This device and your account hold different data.</b> Nothing has been overwritten. This device (last changed ${when(S.saved)}) has ${counts(S)}. Your account (last changed ${when(store.conflict.acct.saved)}) has ${counts(store.conflict.acct)}. Choose which one to keep. The other copy is only dropped once you change something else or close the message that follows, so you can undo the choice until then.</p><span class="row"><button class="btn" data-act="keepacct">Keep my account’s data</button><button class="btn ghost" data-act="keepmine">Keep this device’s data</button></span></div>`;
+  if(!demo&&store.ls===false&&!(store.col&&!store.err))h+=`<div class="banner bad" role="alert"><p><b>This browser is not saving your changes.</b> Its storage is blocked or full, so they are lost when you close the page. Save a backup file in Data before you leave.</p>${ui.view==='data'?'':'<a class="btn" href="#data">Go to Data</a>'}</div>`;
+  if(demo)h+=store.err?`<div class="banner"><p><b>Your saved data could not be loaded, so this is example data.</b> None of these numbers are yours.</p><button class="btn" data-act="retry">Try again</button></div>`
+    :`<div class="banner"><p><b>This is example data.</b> None of these numbers are yours. Import a TD export or add your own entries and the examples disappear.</p>${ui.view==='data'?'':'<a class="btn" href="#data">Add my data</a>'}</div>`;
+  return h;
+}
+const seg=(act,cur,opts,label)=>`<div class="seg" role="group" aria-label="${label||''}">${opts.map(o=>`<button type="button" data-act="${act}" data-v="${o[0]}" class="${String(cur)===String(o[0])?'on':''}" aria-pressed="${String(cur)===String(o[0])}">${o[1]}</button>`).join('')}</div>`;
+/* The question a screen answers and its answer, as the first heading on the screen. */
+const ansHTML=T=>`<h2 class="ans" id="ans" tabindex="-1"><span class="k">${esc(T.q)}</span><span class="big${T.tone==='crit'?' crit':''}" id="ans-a">${esc(T.a)}</span></h2><p class="sub">${esc(T.why)}</p>${T.retry?'<button class="btn ghost small" data-act="retry" style="justify-self:start">Try again</button>':''}${T.go&&T.go!==ui.view?`<span class="row"><a class="btn" href="#${T.go}">Go to Data</a>${T.blank?'<button class="btn ghost" data-act="quick">Add a payment</button>':''}</span>`:''}`;
+/* Every chart can be read as a table instead. The choice is remembered on this device. */
+const tblBtn=k=>`<button class="btn ghost small" data-act="tbl" data-v="${k}" aria-pressed="${!!ui.tbl[k]}">${ui.tbl[k]?'Show chart':'Show table'}</button>`;
+const tbl=(cap,head,rows,on)=>`<div class="scroll"><table><caption class="vh">${esc(cap)}</caption><thead><tr>${head.map(h=>`<th scope="col">${h}</th>`).join('')}</tr></thead><tbody>${rows.map((r,i)=>`<tr${i===on?' class="on"':''}>${r.map((c,j)=>`<td${j?' class="num"':''}>${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+const vLoading=()=>`<section class="panel" aria-busy="true"><h2 class="ans" id="ans" tabindex="-1"><span class="k">One moment</span><span class="big">Looking for your saved data</span></h2><div class="skel" aria-hidden="true"><i></i><i></i><i></i></div></section>`;const recName=r=>r.synth?r.name:r.cat==='Untracked cash'?'Cash you did not log':r.cat==='Rent'?'Rent':r.cat==='Income'&&isETF(r.name.toUpperCase())?'e-Transfer in':pretty(r.name);
+const perName=p=>p===7?'Weekly':p===14?'Every 2 weeks':'Monthly';
+
+function whatIf(){
+  const shift=(+S.settings.hourly||0)*(+S.settings.shiftHours||0),sc=ui.sc;
+  return `<div class="whatif"><h3>What if</h3>
+    <label class="chk"><input type="checkbox" id="sc-shift" data-sc="shift"${sc.shift&&shift>0?' checked':''}${shift>0?'':' disabled'}>You worked one more shift a week${shift>0?` (+${money0(shift)})`:''}</label>
+    ${shift>0?'':'<p class="sub">Add your hourly pay and shift length under Setup in Data to use this one.</p>'}
+    ${A.intM>0?`<label class="chk"><input type="checkbox" id="sc-card" data-sc="card"${sc.card?' checked':''}>The card was paid off (no more interest, about ${money0(A.intM)} a month)</label>`:''}
+    <div class="in"><label class="chk"><input type="checkbox" id="sc-once" data-sc="once"${sc.once?' checked':''}>A one-off expense of</label><input type="number" id="sc-amt" data-sc="amt" min="0" step="1" inputmode="decimal" placeholder="Amount" aria-label="One-off expense amount" value="${esc(sc.amt)}"><span>on</span><input type="date" id="sc-date" data-sc="d" min="${addDays(TODAY,1)}" aria-label="One-off expense date" value="${esc(sc.d)}"></div></div>`;
+}
+function vOverview(){
+  const p=A.pace,M=A.model,ins=insights(S,A).slice(0,5),up=[],T=topAnswer('overview',S,A);
+  if(T.blank)return `${banner()}<section class="panel">${ansHTML(T)}</section>`;
+  for(const r of M.rec)for(const d of dues(r,TODAY,addDays(TODAY,14)))up.push({d,r});
+  up.sort((a,b)=>a.d<b.d?-1:1);up.splice(8);
+  return `${banner()}
+  <section class="tiles" aria-label="Summary">
+    <div class="tile top">${ansHTML(T)}</div>
+    <div class="tile wide"><span class="k">Net position</span><span class="v${A.net<0?' neg':''}">${money0(A.net)}</span><span class="s">Cash ${money0(A.liquid)} · owed ${money0(A.debt)}</span></div>
+    <div class="tile"><span class="k">Spent this month</span><span class="v">${money0(p.mtd)}</span><span class="s">On pace for ${money0(p.proj)} · typical ${money0(p.typical)}</span></div>
+    <div class="tile"><span class="k">Monthly surplus</span><span class="v ${M.surplus<0?'neg':'pos'}">${signed(M.surplus)}</span><span class="s">${money0(M.incM)} in, ${money0(M.spendM)} out</span></div>
+  </section>
+  <section class="split">
+    <div class="stack"><div class="panel"><header><h2>Where you are heading</h2><span class="row">${seg('range',ui.range,[[30,'30 days'],[90,'90 days'],[180,'6 months']],'How far ahead to project')}${tblBtn('fc')}</span></header>
+      <p class="sub">Net position is your cash minus what you owe. It projects your repeating pay and bills plus your usual day-to-day spending.</p>
+      ${ui.tbl.fc?'':'<div class="lg"><span><i class="l"></i>Actual</span><span><i class="l d"></i>Projected</span><span><i class="kb"></i>Likely range</span><span id="lg-alt" hidden><i class="l o"></i>With changes</span></div>'}
+      <div class="chart" id="c-forecast"></div><div class="facts" id="f-forecast"></div>${whatIf()}</div>
+    <div class="panel"><h2>Coming up in the next 2 weeks</h2>
+    ${up.length?`<div class="list">${up.map(u=>`<div class="li"><span class="d">${dshort(u.d)}</span><span class="n">${esc(recName(u.r))}<small>${perName(u.r.per)} · ${esc(u.r.cat)}</small></span><span class="amt${u.r.amt>0?' in':''}">${u.r.amt>0?'+':''}${money(u.r.amt)}</span></div>`).join('')}</div>`:`<p class="empty">No repeating pay or bills detected yet. They show up after two or three cycles of data.</p>`}
+    </div></div>
+    <div class="panel"><header><h2>What the numbers say</h2><a class="btn ghost small" href="#review">Weekly review</a></header><ul class="ins">${ins.map(i=>`<li><span class="pill ${i.sev}">${PILL[i.sev]}</span><h3>${esc(i.title)}</h3><p>${esc(i.body)}</p><p class="do"><b>Do this</b>${esc(i.act)}</p></li>`).join('')}</ul></div>
+  </section>`;
+}function drawOverview(){
+  const el=q('#c-forecast');if(!el)return;
+  const hd=Math.min(45,Math.max(0,diff(TODAY,A.first))),hist=A.ev.length?history(A,hd):[{d:TODAY,y:A.net}],pr=project(A,ui.range);
+  const sc=ui.sc,shift=(+S.settings.hourly||0)*(+S.settings.shiftHours||0),opt={daily:0,buys:[]},amt=parseFloat(sc.amt),last=pr[pr.length-1].d;let hint='';
+  if(sc.shift&&shift>0)opt.daily+=shift/7;
+  if(sc.card&&A.intM>0)opt.daily+=A.intM/30.44;
+  if(sc.once){if(amt>0&&sc.d>TODAY&&sc.d<=last)opt.buys.push({d:sc.d,amt});else hint=`<span>For the one-off expense, enter an amount and a date before ${dshort(last)}.</span>`}
+  const alt=opt.daily>0||opt.buys.length?project(A,ui.range,opt):null,series=[{name:'Actual',cls:'s1',pts:hist},{name:'Projected',cls:'s1',dash:true,end:true,pts:pr}];
+  if(alt)series.push({name:'With changes',cls:'s2',dash:true,end:true,pts:alt});
+  const end=pr[pr.length-1],low=pr.reduce((a,b)=>b.y<a.y?b:a);let cross='';
+  if(ui.tbl.fc){const R=chartRows(hist,pr,alt,ui.range>90?14:7);
+    el.innerHTML=tbl('Net position, past and projected',['Date','Net position','Likely range',...(alt?['With changes']:[])],R.map(r=>[dshort(r.d)+(r.kind==='Projected'?'':` <small>${r.kind}</small>`),money0(r.y),r.lo==null?'':money0(r.lo)+' to '+money0(r.hi),...(alt?[r.alt==null?'':money0(r.alt)]:[])]),R.findIndex(r=>r.kind==='Today'))}
+  else lineChart(el,{from:hist[0].d,to:last,now:TODAY,label:`Net position, past and projected. Today ${money0(A.net)}. On ${dshort(end.d)}: ${money0(end.y)}.`,band:pr,series});
+  const lg=q('#lg-alt');if(lg)lg.hidden=!alt;
+  const up=pr.find((p,i)=>i&&p.y>=0&&pr[i-1].y<0),dn=pr.find((p,i)=>i&&p.y<0&&pr[i-1].y>=0);
+  if(up)cross=`<span>Cash covers your debts from <b>${dshort(up.d)}</b></span>`;else if(dn)cross=`<span>Goes below zero around <b>${dshort(dn.d)}</b></span>`;
+  const ae=alt&&alt[alt.length-1];
+  q('#f-forecast').innerHTML=`<span>On ${dshort(end.d)}: <b>${money0(end.y)}</b> (likely ${money0(end.lo)} to ${money0(end.hi)})</span><span>Lowest point: <b>${money0(low.y)}</b> on ${dshort(low.d)}</span>${cross}${ae?`<span>With the changes ticked below: <b>${money0(ae.y)}</b> (${signed(ae.y-end.y)})</span>`:''}${hint}`;
+}
+function txRows(){
+  const names=id=>(S.accounts[id]||{}).name||'Account',rows=[];
+  for(const t of S.tx)rows.push({d:t.d,desc:t.desc,amt:t.amt,cat:A.cat.get(t.id),src:names(t.acct),id:t.id});
+  for(const c of S.cash)rows.push({d:c.d,desc:c.note||'Cash',amt:c.amt,cat:c.amt>0?'Income':c.cat,src:'Cash'});
+  for(const p of S.pend)rows.push({d:p.d,desc:p.desc,amt:-p.amt,cat:A.cat.get(p.id)||'Other',src:'Pending',id:p.id});
+  const s=ui.q.trim().toUpperCase();
+  return rows.filter(r=>(!ui.fcat||r.cat===ui.fcat)&&(!ui.fcat||!ui.month||ym(r.d)===ui.month)&&(!s||r.desc.toUpperCase().includes(s)||r.cat.toUpperCase().includes(s))).sort((a,b)=>a.d<b.d?1:a.d>b.d?-1:0);
+}
+function txList(){
+  const rows=txRows(),opts=Object.keys(CATS).filter(c=>c!=='Untracked cash');
+  if(!rows.length)return `<p class="empty">No transactions match${ui.q.trim()?` “${esc(ui.q.trim())}”`:''}${ui.fcat?` in ${esc(ui.fcat)}`:''}.</p><button class="btn ghost small" data-act="clearall">Clear the search and filter</button>`;
+  return `${ui.fcat?`<div class="chips"><span>Showing ${esc(ui.fcat)}${ui.month?' in '+dfmt(ui.month+'-01',{month:'long'}):''}</span><button class="chip" data-act="clearf">Clear ✕</button></div>`:''}
+  ${rows.slice(0,ui.shown).map(r=>`<div class="tx"><span class="d num">${dshort(r.d)}</span><span class="n" style="min-width:0;overflow-wrap:anywhere">${esc(r.desc)} <small style="color:var(--muted)">${esc(r.src)}</small></span>${r.id?`<select aria-label="Category for ${esc(r.desc)}" data-txcat="${esc(r.id)}">${opts.map(c=>`<option${c===r.cat?' selected':''}>${esc(c)}</option>`).join('')}</select>`:`<span style="font-size:13px;color:var(--ink2)">${esc(r.cat)}</span>`}<span class="amt${r.amt>0?' in':''}">${r.amt>0?'+':''}${money(r.amt)}</span></div>`).join('')}
+  ${rows.length>ui.shown?`<button class="btn ghost small" data-act="more" style="justify-self:start;margin-top:8px">Show more (${rows.length-ui.shown} left)</button>`:''}`;
+}
+function vBudget(){
+  const rows=budgetStatus(S,A),B=budgetAverages(A),cats=Object.keys(CATS).filter(c=>(CATS[c]==='flex'||CATS[c]==='fixed')&&c!=='Untracked cash'),has=rows.length>0;
+  const fromAvg=B.n?`<button class="btn ${has?'ghost ':''}small" data-act="budavg">Set from my ${B.n===1?'last full month':'last '+B.n+' months'}</button>`:'';
+  return `<section class="panel" id="budp"><header><h2>Budget for ${dfmt(TODAY,{month:'long'})}</h2><span class="row">${fromAvg}<button class="btn ghost small" data-act="budedit" aria-expanded="${ui.bedit}">${ui.bedit?'Done':'Edit amounts'}</button></span></header>
+    ${has?`<p class="sub">The bar is what you have spent this month. The dark tick is today. A warning shows when your pace would take you over before month end.</p>
+      <div class="bud">${rows.map(r=>`<div class="bud-r ${r.tone}"><span>${esc(r.cat)}</span><span class="amt">${money0(r.spent)} of ${money0(r.budget)}</span><span class="bud-t" role="img" aria-label="${esc(r.cat)}: ${Math.round(r.spent/r.budget*100)} percent of the budget used"><i data-bar="bud:${esc(r.cat)}" style="width:${(r.pct*100).toFixed(1)}%"></i><u style="left:calc(${(r.mark*100).toFixed(1)}% - 1px)"></u></span><span class="bud-n">${r.tone==='crit'?'■ Over. ':r.tone==='warn'?'▲ Watch. ':''}${esc(r.note)}</span></div>`).join('')}</div>`
+    :`<p class="empty">${B.n?'No budgets yet. Set them from what you really spent, then adjust any amount.':'No budgets yet. Setting them from your average needs one full calendar month of history. You can type amounts in by hand until then.'}</p>`}
+    ${ui.bedit?`<div class="form">${cats.map(c=>`<label class="f">${esc(c)}<input type="number" min="0" step="1" inputmode="decimal" id="bud-${c.replace(/[^A-Za-z]/g,'')}" data-bud="${esc(c)}" value="${S.budgets[c]>0?S.budgets[c]:''}" placeholder="${B.avg[c]?'average '+B.avg[c]:'no budget'}"></label>`).join('')}</div><p class="sub">Amounts are per month. Leave a box empty for no budget. Press Done to see the bars update.</p>`:''}
+  </section>`;
+}
+function vSpending(){
+  if(!A.ev.length)return `${banner()}<section class="panel">${ansHTML(topAnswer('spending',S,A,{}))}</section>`;
+  const all=A.months,rows=ui.spanM?all.slice(-ui.spanM):all,sel=rows.find(r=>r.m===ui.month)||rows[rows.length-1];ui.month=sel.m;
+  const typ={},fm=A.full.filter(r=>r.m!==sel.m).slice(-6);
+  for(const r of fm)for(const c in r.cat)typ[c]=(typ[c]||0)+r.cat[c]/fm.length;
+  const cats=Object.entries(sel.cat).filter(e=>Math.abs(e[1])>=.5).sort((a,b)=>b[1]-a[1]),mx=Math.max(1,...cats.map(e=>Math.max(e[1],typ[e[0]]||0)));
+  const tr=[...new Set([...Object.keys(A.last30),...Object.keys(A.prev30)])].map(c=>({c,a:A.last30[c]||0,b:A.prev30[c]||0})).sort((x,y)=>y.a-x.a),last6=all.slice(-6);
+  const M=A.model,wmx=Math.max(1,...M.vs),order=[1,2,3,4,5,6,0],top=M.vs.indexOf(Math.max(...M.vs));
+  const rec=[...M.rec].sort((a,b)=>Math.abs(b.amt*(b.per===30?1:30.44/b.per))-Math.abs(a.amt*(a.per===30?1:30.44/a.per)));
+  const mlong=dfmt(sel.m+'-01',{month:'long'}),mshort=dfmt(sel.m+'-01',{month:'short'}),ms=m=>dfmt(m.m+'-01',{month:'short'});
+  return `${banner()}
+  <section class="panel">${ansHTML(topAnswer('spending',S,A,{month:sel}))}</section>
+  <section class="panel"><header><h2>Money in and out</h2><span class="row">${seg('span',ui.spanM,[[3,'3 mo'],[6,'6 mo'],[12,'12 mo'],[0,'All']],'How many months to show')}${tblBtn('mo')}</span></header>
+    ${ui.tbl.mo?`${tbl('Income and spending by month',['Month','In','Out','Left over'],rows.map(r=>[`<button class="lnk" data-act="month" data-m="${r.m}" aria-pressed="${r.m===sel.m}">${monthName(r.m)}</button>`,money0(r.inc),money0(r.spend),signed(r.inc-r.spend)]),rows.indexOf(sel))}<p class="sub">Choose a month to break it down below.</p>`
+    :`<div class="lg"><span><i class="k3"></i>Income</span><span><i class="k2"></i>Spending</span><span>Number under each month is what was left over.</span></div>
+    <div class="chart" id="c-months"></div><p class="sub">Tap a month to break it down below.</p>`}</section>
+  <section class="split even">
+    <div class="panel"><header><h2>${mlong} by category</h2>${tblBtn('cat')}</header>
+      ${ui.tbl.cat?`<p class="sub">Choose a category to list its transactions.</p>${tbl(mlong+' by category',['Category',mshort,'Average month'],cats.map(([c,v])=>[`<button class="lnk" data-act="fcat" data-c="${esc(c)}" aria-pressed="${ui.fcat===c}">${esc(c)}</button>`,money0(v),typ[c]?money0(typ[c]):'n/a']),cats.findIndex(e=>e[0]===ui.fcat))}`
+      :`<p class="sub">Bar is this month. The dark tick is your average month. Tap a row to list its transactions.</p>
+      <div class="hbs">${cats.map(([c,v])=>`<button class="hb${ui.fcat===c?' on':''}" aria-pressed="${ui.fcat===c}" data-act="fcat" data-c="${esc(c)}" data-tip="${esc(c+'\n'+mshort+': '+money0(v)+(typ[c]?'\nAverage month: '+money0(typ[c]):''))}"><span class="hb-l">${esc(c)}</span><span class="hb-t"><i data-bar="cat:${esc(c)}" style="width:${Math.max(0,v/mx*100).toFixed(1)}%"></i>${typ[c]?`<u style="left:calc(${(typ[c]/mx*100).toFixed(1)}% - 1px)"></u>`:''}</span><span class="amt">${money0(v)}</span></button>`).join('')}</div>`}</div>
+    <div class="panel"><h2>Trends</h2><p class="sub">Last 30 days against the 30 before, with each category's last ${last6.length} months.</p>
+      <div class="scroll"><table><thead><tr><th scope="col">Category</th><th scope="col">Last 30d</th><th scope="col">Change</th><th scope="col">Months</th></tr></thead><tbody>
+      ${tr.map(r=>{const d=r.a-r.b,pc=r.b>0?d/r.b*100:null,big=A.has60&&Math.abs(d)>=20&&(pc==null||Math.abs(pc)>=20),vals=last6.map(m=>Math.max(0,m.cat[r.c]||0));
+        return `<tr><td>${esc(r.c)}</td><td class="num">${money0(r.a)}</td><td class="num chg ${big?(d>0?'up':'down'):''}">${!A.has60?'n/a':pc==null?'new':(d>0?'▲ ':d<0?'▼ ':'')+Math.abs(Math.round(pc))+'%'}</td><td>${spark(vals,last6.map((m,i)=>ms(m)+': '+money0(vals[i])).join('\n'))}</td></tr>`}).join('')}
+      </tbody></table></div></div>
+  </section>
+  ${vBudget()}
+  <section class="split even">
+    <div class="panel"><header><h2>Day of the week</h2>${tblBtn('wk')}</header><p class="sub">Average day-to-day spending per weekday over the last ${M.W} days, repeating bills left out.</p>
+      ${ui.tbl.wk?tbl('Average spending by day of the week',['Day','Average spending'],order.map(i=>[DOW[i],money0(M.vs[i])]),-1)
+      :`<div class="wk" role="img" aria-label="${esc(order.map(i=>DOW[i]+' '+money0(M.vs[i])).join(', '))}">${order.map(i=>`<div class="wk-c" data-tip="${DOW[i]}: ${money0(M.vs[i])} on average"><em>${i===top?money0(M.vs[i]):''}</em><div class="bar"><i data-bar="wk:${i}" style="height:${Math.max(0,M.vs[i]/wmx*100).toFixed(1)}%"></i></div><span>${DOW[i].slice(0,3)}</span></div>`).join('')}</div>`}</div>
+    <div class="panel"><h2>Repeats</h2><p class="sub">Pay and bills that show up on a schedule. These drive the forecast.</p>
+      ${rec.length?`<div class="list">${rec.map(r=>`<div class="li" style="grid-template-columns:minmax(0,1fr) auto"><span class="n">${esc(recName(r))}<small>${perName(r.per)} · next ${dshort(nextDue(r,TODAY))} · ${money0(Math.abs(r.amt)*(r.per===30?12:365.25/r.per))} a year</small></span><span class="amt${r.amt>0?' in':''}">${r.amt>0?'+':''}${money(r.amt)}</span></div>`).join('')}</div>`:`<p class="empty">None detected yet.</p>`}</div>
+  </section>
+  <section class="panel" id="txp"><header><h2>Transactions</h2><div class="txbar"><input type="search" id="txq" placeholder="Search" aria-label="Search transactions" value="${esc(ui.q)}"><select id="txf" aria-label="Filter by category"><option value="">All categories</option>${Object.keys(CATS).filter(c=>c!=='Untracked cash').map(c=>`<option${ui.fcat===c?' selected':''}>${esc(c)}</option>`).join('')}</select></div></header>
+    <p class="sub">Wrong category? Change it here and every transaction from the same merchant follows.</p><div id="txlist">${txList()}</div></section>`;
+}function drawSpending(){const el=q('#c-months');if(!el)return;monthChart(el,ui.spanM?A.months.slice(-ui.spanM):A.months,ui.month)}
+
+function vWishlist(){
+  return `${banner()}
+  <section class="panel" id="w-answer"></section>
+  <section class="panel"><h2>Add something you want</h2>
+    <form class="form" id="wform"><label class="f grow">What is it<input type="text" id="w-name" required maxlength="60" placeholder="e.g. Winter jacket"></label>
+      <label class="f">Price (CAD, with tax)<input type="number" id="w-price" required min="1" step="0.01" inputmode="decimal"></label>
+      <label class="f">How much you need it<select id="w-need">${[1,2,3,4,5].map(n=>`<option value="${n}"${n===2?' selected':''}>${n} · ${NEED[n]}</option>`).join('')}</select></label>
+      <button class="btn">Add to wishlist</button></form>
+    <div class="lever"><label for="trim"><b>What if</b> you trimmed flexible spending by</label><input type="range" id="trim" min="0" max="50" step="5" value="${ui.trim}"><span class="num" id="trimv"></span></div>
+    <p class="sub">Flexible means eating out, shopping, subscriptions, fun, untracked cash and other. Move the slider and every date below updates.</p>${+S.settings.hourly>0?'':'<p class="sub">Add your hourly pay under Setup in Data to see each price in hours of your work.</p>'}
+  </section><div id="wbody" style="display:grid;gap:16px"></div>`;
+}
+function wishBody(){
+  const R=evalWishlist(S,A,ui.trim/100),el=q('#wbody');if(!el)return;
+  q('#w-answer').innerHTML=ansHTML(topAnswer('wishlist',S,A,{R}));
+  q('#trimv').textContent=`${ui.trim}% → surplus ${signed(R.surplus)}/mo`;q('#trim').setAttribute('aria-valuetext',`${ui.trim} percent, surplus ${signed(R.surplus)} a month`);
+  const X=wishExtras();
+  if(!S.wish.length){el.innerHTML=X.ask+X.les;return}
+  const rough=A.ev.length?'':`<div class="banner"><p><b>These verdicts are rough.</b> With no transactions imported, they only know the pay and rent from Setup and assume you spend nothing else.</p><a class="btn" href="#data">Import transactions</a></div>`;
+  const tl=[...R.items.map(i=>({name:i.name,ready:i.ready,amt:i.price})),...(R.debtRow?[{...R.debtRow,debt:1}]:[])].sort((a,b)=>(a.ready||'9999')<(b.ready||'9999')?-1:1);
+  const maxD=Math.max(30,...tl.filter(t=>t.ready).map(t=>diff(t.ready,TODAY))),anySim=R.items.some(i=>ui.sim[i.id]);
+  el.innerHTML=`${X.ask}${rough}<section class="receipts">${R.items.map(i=>`<div class="rw"><article class="rcpt t-${i.tone}">
+      <header><h3>${esc(i.name)}</h3><span class="stamp">${esc(i.verdict)}</span></header>
+      <dl><div><dt>Price</dt><span></span><dd>${money(i.price)}</dd></div>
+        ${i.hours?`<div><dt>Your work</dt><span></span><dd>${hrs(i.hours)}</dd></div>`:`<div><dt>Take-home pay</dt><span></span><dd>${i.payDays?i.payDays.toFixed(1)+' days':'n/a'}</dd></div>`}
+        <div><dt>Need</dt><span></span><dd>${i.need}/5 ${NEED[i.need]}</dd></div>
+        <div><dt>On the list</dt><span></span><dd>${i.waited} day${i.waited===1?'':'s'}</dd></div>
+        <div><dt>Ready</dt><span></span><dd>${i.ready?(i.ready===TODAY?'Today':dfmt(i.ready,{month:'short',day:'numeric',year:'numeric'})):'No date yet'}</dd></div></dl>
+      <p>${esc(i.why)}</p><p class="lesson"><b>Lesson</b>${esc(i.lesson)}</p>
+      <footer><label class="chk"><input type="checkbox" data-sim="${esc(i.id)}"${ui.sim[i.id]?' checked':''}>Test buying it now</label><span class="row"><button class="btn small" data-act="buyw" data-id="${esc(i.id)}">Bought it</button><button class="btn ghost small" data-act="delw" data-id="${esc(i.id)}">Remove</button></span></footer>
+    </article></div>`).join('')}</section>
+  <section class="split even">
+    <div class="panel"><h2>Buy order</h2><p class="sub">Needs first, then high-interest debt, then wants from most needed and cheapest. Each bar runs from today to the day you can pay cash.</p>
+      <div class="tl">${tl.map(t=>`<div class="tl-r${t.debt?' debt':''}" data-tip="${esc(t.name+'\n'+money0(t.amt)+'\n'+(t.ready?'Ready '+dlong(t.ready):'No date at this pace'))}"><span class="tl-n">${esc(t.name)}</span><span class="tl-t">${t.ready?`<i data-bar="tl:${esc(t.name)}" style="width:${Math.max(2,diff(t.ready,TODAY)/maxD*100).toFixed(1)}%"></i>`:''}</span><span class="tl-d">${t.ready?(t.ready===TODAY?'Today':dshort(t.ready)):'No date'}</span></div>`).join('')}</div></div>
+    <div class="panel"><header><h2>What buying does to you</h2>${tblBtn('sim')}</header><p class="sub">${anySim?'Your next 120 days with the ticked items bought tomorrow, against leaving the money alone.':'Tick “Test buying it now” on an item to see the hit on your next 120 days.'}</p>
+      ${ui.tbl.sim?'':`<div class="lg"><span><i class="l d"></i>Leave it</span>${anySim?'<span><i class="l o"></i>Buy the ticked items</span>':''}</div>`}
+      <div class="chart" id="c-sim"></div><div class="facts" id="f-sim"></div></div>
+  </section>${X.les}`;
+  const base=project(A,120,{trim:ui.trim/100}),buys=R.items.filter(i=>ui.sim[i.id]).map(i=>({d:addDays(TODAY,1),amt:i.price})),ser=[{name:'Leave it',cls:'s1',dash:true,end:true,pts:base}];
+  let facts=`<span>Day 120 if you leave it: <b>${money0(base[120].y)}</b></span>`,w=null;
+  if(buys.length){w=project(A,120,{trim:ui.trim/100,buys});ser.push({name:'Buy ticked items',cls:'s2',dash:true,end:true,pts:w});const lowW=w.reduce((a,b)=>b.y<a.y?b:a);
+    facts+=`<span>If you buy: <b>${money0(w[120].y)}</b></span><span>Lowest point: <b>${money0(lowW.y)}</b> on ${dshort(lowW.d)}</span>`}
+  if(ui.tbl.sim)q('#c-sim').innerHTML=tbl('Net position with and without the ticked purchases',['Date','Leave it',...(w?['Buy the ticked items']:[])],chartRows([],base,w,7).map(r=>[r.kind==='Today'?'Today':dshort(r.d),money0(r.y),...(w?[money0(r.alt==null?r.y:r.alt)]:[])]),-1);
+  else lineChart(q('#c-sim'),{from:TODAY,to:base[120].d,label:`Net position with and without the ticked purchases. Day 120 if you leave it: ${money0(base[120].y)}.${w?` If you buy: ${money0(w[120].y)}.`:''}`,h:220,series:ser});
+  q('#f-sim').innerHTML=facts;
+}
+function vDebt(){
+  if(!A.debts.length)return `${banner()}<section class="panel">${ansHTML(topAnswer('debt',S,A,{}))}</section>`;
+  if(ui.extra==null)ui.extra=+S.settings.extraPay||0;
+  const mx=Math.max(500,Math.ceil(Math.max(0,A.model.surplus)/50)*50,ui.extra);
+  return `${banner()}
+  <section class="panel"><div id="d-answer" style="display:grid;gap:6px"></div>
+    <div class="lever"><label for="extra"><b>Extra</b> you pay each month, on top of the minimums</label><input type="range" id="extra" min="0" max="${mx}" step="10" value="${ui.extra}"><span class="num" id="extrav"></span></div>
+    <div class="scroll" id="d-table"></div><p class="sub" id="d-note"></p></section>
+  <section class="panel"><div id="d-first" style="display:grid;gap:6px"></div>
+    <div>${A.debts.map(d=>`<div class="dr"><span><b>${esc(d.name)}</b><small>${money(d.bal)} owed at ${rate2(d.apr)}%${d.guess?' (no rate entered, so a typical card rate is used)':''}, about ${money(d.bal*d.apr/1200)} interest a month</small></span>
+      <label class="f">Minimum payment a month<input type="number" min="0" step="1" inputmode="decimal" data-acc="${esc(d.id)}" data-f="minPay" id="a-${esc(d.id)}-minPay" value="${d.min>0?d.min:''}" placeholder="From your statement"></label>
+      <span class="num" id="dp-${esc(d.id)}"></span></div>`).join('')}</div>
+    <p class="sub">Balances and rates come from Accounts and debts in Data. Check the rate against your statement and change it there.</p></section>`;
+}
+function debtBody(){
+  const P=debtPlan(A,ui.extra),el=q('#d-answer');if(!P||!el)return;const p=P.plan,one=A.debts.length===1,who=one?esc(A.debts[0].name)+' is':'Your debts are',my=m=>dfmt(m+'-01',{month:'short',year:'numeric'});
+  q('#extrav').textContent=money0(ui.extra)+' a month';q('#extra').setAttribute('aria-valuetext',money0(ui.extra)+' extra a month');
+  el.innerHTML=ansHTML(topAnswer('debt',S,A,{plan:P,extra:ui.extra}));
+  q('#d-table').innerHTML=`<table><thead><tr><th>Extra a month</th><th>Paid off</th><th>Months</th><th>Total interest</th></tr></thead><tbody>${P.choices.map(c=>`<tr${c.extra===ui.extra?' class="on"':''}><td class="num">${money0(c.extra)}${c.extra===ui.extra?' (your choice)':''}</td><td>${c.when?my(c.when):'Never'}</td><td class="num">${c.months||''}</td><td class="num">${c.months?money0(c.interest):'Keeps adding up'}</td></tr>`).join('')}</tbody></table>`;
+  q('#d-note').textContent=P.noMin.length?`No minimum payment is entered for ${P.noMin.join(' or ')}, so this assumes you cover each month’s interest and then add the extra. Enter the minimum from your statement below for an exact date.`:'Each month interest is added, every debt gets its minimum, and the extra goes to one debt at a time. When a debt is cleared, its minimum moves to the next one.';
+  const f=A.debts.find(d=>d.id===p.first);
+  q('#d-first').innerHTML=one?`<h2>Every extra dollar goes to ${esc(f.name)}</h2><p class="sub">It is your only debt.</p>`
+    :`<h2>Pay ${esc(f.name)} first</h2><p class="sub">${P.order==='rate'?`It has the highest rate, ${rate2(f.apr)}%.`:'It has the smallest balance, so it clears soonest and frees its minimum for the next one.'} ${P.saves>=1?`That order costs ${money0(P.saves)} less interest than ${P.order==='rate'?'starting with the smallest balance':'starting with the highest rate'}.`:'Here either order costs about the same.'} Keep paying the minimum on the others.</p>`;
+  for(const d of p.debts){const c=q('#dp-'+CSS.escape(d.id));if(c)c.textContent=d.when?`Paid off ${my(d.when)} · ${money0(d.interest)} interest`:'Not paid off at this rate'}
+}
+function vReview(){
+  const W=weekly(S,A),T=topAnswer('review',S,A,{W}),mark={warn:'▲ ',crit:'■ ',good:'',info:''};
+  if(W.empty)return `${banner()}<section class="panel narrow">${ansHTML(T)}</section>`;
+  return `${banner()}<div class="stack narrow">
+  <section class="panel">${ansHTML(T)}
+    <ul class="ins">${W.changes.filter(c=>c.k!=='net').map(c=>`<li><h3>${mark[c.tone]||''}${esc(c.title)}</h3><p>${esc(c.body)}</p></li>`).join('')}</ul></section>
+  <section class="panel"><h2>${W.leaks.length===1?'The biggest leak':W.leaks.length?`The ${W.leaks.length} biggest leaks`:'Leaks'}</h2>
+    ${W.leaks.length?`<div class="list">${W.leaks.map(l=>`<div class="li" style="grid-template-columns:minmax(0,1fr) auto"><span class="n">${esc(l.name)}<small>${esc(l.cat)} · ${l.n} time${l.n===1?'':'s'} this week</small></span><span class="amt">${money(l.amt)}</span></div>`).join('')}</div>`:'<p class="empty">No flexible spending or fees this week.</p>'}</section>
+  <section class="panel"><h2>Do this week</h2>
+    ${W.actions.length?`<ol class="steps">${W.actions.map(a=>`<li><b>${esc(a.title)}.</b> ${esc(a.act)}</li>`).join('')}</ol>`:'<p class="empty">Nothing needs doing. Keep going as you are.</p>'}</section></div>`;
+}function wishExtras(){
+  const hourly=+S.settings.hourly||0,due=dueReviews(S,TODAY),L=lessons(S),bought=[...S.bought].sort((a,b)=>a.bought<b.bought?1:-1),said={yes:'Worth it',partly:'Partly worth it',no:'Not worth it'};
+  const ask=due.length?`<section class="panel"><h2>Was it worth it?</h2><p class="sub">You bought ${due.length===1?'this':'these'} at least 30 days ago. Your answers write the lessons below.</p>
+    ${due.map(b=>`<div class="rvq"><span><b>${esc(b.name)}</b> · ${money(b.price)}${hourly>0?' · '+hrs(b.price/hourly)+' of work':''} · bought ${dshort(b.bought)}</span>
+      <label class="f">A note for next time (optional)<input type="text" id="rv-${esc(b.id)}" maxlength="80" placeholder="e.g. Used it twice"></label>
+      <span class="row"><button class="btn small" data-act="worth" data-v="yes" data-id="${esc(b.id)}">Yes, worth it</button><button class="btn ghost small" data-act="worth" data-v="partly" data-id="${esc(b.id)}">Partly</button><button class="btn ghost small" data-act="worth" data-v="no" data-id="${esc(b.id)}">No</button></span></div>`).join('')}</section>`:'';
+  const les=bought.length?`<section class="panel"><h2>Lessons from what you bought</h2>
+    ${L.length?`<ul class="ins">${L.map(x=>`<li><p class="do">${esc(x)}</p></li>`).join('')}</ul>`:'<p class="empty">No lessons yet. They are written from your answers, 30 days after each purchase.</p>'}
+    <div class="list">${bought.map(b=>`<div class="li"><span class="d">${dshort(b.bought)}</span><span class="n">${esc(b.name)}<small>${b.worth?said[b.worth]+(b.note?' · '+esc(b.note):''):'You will be asked on '+dshort(addDays(b.bought,30))}</small></span><span style="display:flex;gap:10px;align-items:center"><span class="amt">${money(b.price)}</span><button class="btn ghost small" data-act="delb" data-id="${esc(b.id)}" aria-label="Remove ${esc(b.name)} from bought items">✕</button></span></div>`).join('')}</div></section>`:'';
+  return {ask,les};
+}
+/* The add-a-payment sheet. On a phone it sits at the bottom with its own number pad, so one thumb reaches everything and no keyboard covers it. */
+function vQuick(){
+  const acc=Object.entries(demo?{}:S.accounts).filter(e=>e[1].type!=='cash'&&e[1].type!=='loan'),def=demo?'':payAcctOf(S,{})||'',places=demo?[]:quickPlaces(A,4),pad=matchMedia('(max-width:520px),(pointer:coarse)').matches;
+  const opts=[...acc.map(([id,a])=>[id,a.name]),...(acc.length?[]:[['','Card']]),['cash','Cash']],sel=opts.some(o=>o[0]===def)?def:opts[0][0];
+  return `<form class="qf" id="qform" novalidate><header><h2 id="qd-h">Add a payment</h2><button type="button" class="btn ghost small" data-act="quickx">Close</button></header>
+    <label class="f">Amount<span class="qamt"><span aria-hidden="true">$</span><input type="text" id="q-amt" inputmode="${pad?'none':'decimal'}" autocomplete="off" placeholder="0.00" aria-describedby="q-err"></span></label>
+    <p class="msg bad" id="q-err" role="alert" hidden></p>
+    <fieldset class="qpay"><legend>Paid with</legend><div>${opts.map(o=>`<label><input type="radio" name="qpay" value="${esc(o[0])}"${o[0]===sel?' checked':''}><span>${esc(o[1])}</span></label>`).join('')}</div></fieldset>
+    <label class="f">Where (optional)<input type="text" id="q-desc" maxlength="50" autocomplete="off" enterkeyhint="done" placeholder="e.g. Tim Hortons"></label>
+    ${places.length?`<div class="chips" role="group" aria-label="Places you pay often. Choosing one saves the payment there."><span class="sub">Tap to save at</span>${places.map(p=>`<button type="button" class="chip" data-act="qplace" data-v="${esc(p)}">${esc(p)}</button>`).join('')}</div>`:''}
+    <div class="keys" role="group" aria-label="Number pad">${['1','2','3','4','5','6','7','8','9','.','0','back'].map(k=>`<button type="button" data-key="${k}"${k==='back'?' aria-label="Delete the last digit"':k==='.'?' aria-label="Decimal point"':''}>${k==='back'?'←':k}</button>`).join('')}</div>
+    <button class="btn qsave">Save</button>
+    <p class="sub note">It counts right away. A card payment is replaced by the real line at your next TD import.</p></form>`;
+}function vLive(){
+  if(demo)return `<section class="panel"><header><h2>Live card payments</h2><button class="btn small" data-act="livesetup">Set it up</button></header><p class="sub">Apple Pay purchases can land here within about a minute: your iPhone emails you a one-line receipt the moment you tap, and this page reads it from your Gmail. Physical-card payments use the + Spend button at the top.</p></section>`;
+  const code=S.settings.liveCode,acc=Object.entries(S.accounts).filter(e=>e[1].type!=='cash'&&e[1].type!=='loan'),def=payAcctOf(S,{}),pend=[...S.pend].sort((a,b)=>(b.ts||0)-(a.ts||0));
+  return `<section class="panel"><header><h2>Live card payments</h2><span class="num" style="font-size:12px;color:var(--muted)">${pend.length} pending</span></header>
+    <p class="sub">Your iPhone emails you a one-line receipt the moment you tap with Apple Pay. This page reads those emails from your Gmail and counts the payment right away.</p>
+    <div id="live-status" style="display:grid;gap:8px">${liveStatus()}</div>
+    <div class="split even" style="gap:20px">
+      <div style="display:grid;gap:10px;align-content:start;min-width:0"><h3>One-time iPhone setup (iOS 17 or later)</h3>
+        <ol class="steps"><li>Make sure your Gmail account is added to the iPhone's <b>Mail</b> app (Settings, Mail, Accounts).</li>
+          <li>Open <b>Shortcuts</b>, go to <b>Automation</b>, tap <b>+</b>, and choose <b>Transaction</b>. Tick your TD card, choose <b>Run Immediately</b>, tap Next, then <b>New Blank Automation</b>.</li>
+          <li>Add the action <b>Send Email</b>. Set <b>To</b> to your own Gmail address.</li>
+          <li>In <b>Subject</b>, paste the line below. After it, insert <b>Shortcut Input</b> and set it to <b>Amount</b>, type <b>|</b>, insert <b>Shortcut Input</b> again set to <b>Merchant</b>, type <b>|</b>, then insert <b>Current Date</b>.</li>
+          <li>Tap the arrow on the action, turn off <b>Show Compose Sheet</b>, and tap Done.</li>
+          <li>Make one Apple Pay purchase. If iOS asks whether the shortcut may send email, choose <b>Always Allow</b>. Then press Connect Gmail above.</li></ol>
+        <div class="code"><code id="subj">Cashbook ${esc(code)} | </code><button class="btn ghost small" data-act="copysubj">Copy</button></div>
+        <p class="sub">The finished subject reads like: Cashbook ${esc(code)} | $6.20 | Tim Hortons | Nov 9, 2026 at 6:22 PM. The code is yours alone, so nobody else's email can add a payment.</p></div>
+      <div style="display:grid;gap:10px;align-content:start;min-width:0"><h3>Pending until your next TD import</h3>
+        ${acc.length?`<label class="f">Apple Pay charges go to<select id="s-payAcct" data-set="payAcct">${acc.map(([id,a])=>`<option value="${esc(id)}"${id===def?' selected':''}>${esc(a.name)}</option>`).join('')}</select></label>`:''}
+        ${pend.length?`<div class="list">${pend.slice(0,12).map(p=>`<div class="li"><span class="d">${dshort(p.d)}</span><span class="n">${esc(p.desc)}<small>${p.src==='live'?'Apple Pay':'Added by hand'} · ${esc(A.cat.get(p.id)||'Other')}</small></span><span style="display:flex;gap:10px;align-items:center"><span class="amt">${money(-p.amt)}</span><button class="btn ghost small" data-act="delp" data-id="${esc(p.id)}" aria-label="Remove pending payment">✕</button></span></div>`).join('')}</div>`:`<p class="empty">Nothing pending. Payments show up here first, then disappear when the matching line arrives in a TD import.</p>`}</div>
+    </div></section>`;
+}
+function vData(){
+  const acc=Object.entries(demo?{}:S.accounts),cashCats=Object.keys(CATS).filter(c=>CATS[c]!=='x'&&c!=='Income'&&c!=='Untracked cash'),set=demo?DEF().settings:S.settings,cash=demo?[]:[...S.cash].sort((a,b)=>a.d<b.d?1:-1);
+  return `${banner()}<section class="panel" id="ans-data" data-w="${saveWhere()}">${ansHTML(topAnswer('data',S,A,{where:saveWhere()}))}</section>${vLive()}
+  <section class="split even">
+    <div class="panel"><h2>Import from TD</h2>
+      <ol class="steps"><li>In EasyWeb, open the account and pick a date range.</li><li>Download the activity as a CSV (spreadsheet) file.</li><li>Do it once for chequing and once for your Visa, then drop both here.</li></ol>
+      <label class="f">This file is from<select id="imp-acct">${acc.map(([id,a])=>`<option value="${esc(id)}">${esc(a.name)}</option>`).join('')}<option value="new:chequing">New chequing account</option><option value="new:credit">New credit card</option><option value="new:savings">New savings account</option></select></label>
+      <label class="drop" id="drop"><input class="sr" type="file" id="imp-file" accept=".csv,text/csv,text/plain" multiple><b>Choose CSV files</b><span>or drop them here. Re-importing the same dates is safe: duplicates are skipped.</span></label>
+      ${ui.msg?`<p class="msg ${ui.msg.ok?'ok':'bad'}" role="status">${esc(ui.msg.text)}</p>`:''}</div>
+    <div class="panel"><h2>Log cash</h2><p class="sub">ATM withdrawals with nothing logged against them count as untracked spending.</p>
+      <form class="form" id="cform"><label class="f">Date<input type="date" id="c-date" value="${TODAY}" max="${TODAY}" required></label>
+        <label class="f">Amount<input type="number" id="c-amt" min="0.01" step="0.01" inputmode="decimal" required></label>
+        <label class="f">Direction<select id="c-dir"><option value="-1">Spent</option><option value="1">Received</option></select></label>
+        <label class="f">Category<select id="c-cat">${cashCats.map(c=>`<option${c==='Eating out'?' selected':''}>${esc(c)}</option>`).join('')}</select></label>
+        <label class="f grow">Note<input type="text" id="c-note" maxlength="50" placeholder="e.g. Lunch"></label><button class="btn">Add</button></form>
+      ${cash.length?`<div class="list">${cash.slice(0,8).map(c=>`<div class="li"><span class="d">${dshort(c.d)}</span><span class="n">${esc(c.note||c.cat)}<small>${esc(c.amt>0?'Received':c.cat)}</small></span><span style="display:flex;gap:10px;align-items:center"><span class="amt${c.amt>0?' in':''}">${c.amt>0?'+':''}${money(c.amt)}</span><button class="btn ghost small" data-act="delc" data-id="${esc(c.id)}" aria-label="Remove entry">✕</button></span></div>`).join('')}</div>`:''}</div>
+  </section>
+  <section class="panel"><header><h2>Accounts and debts</h2><button class="btn ghost small" data-act="addacc">Add one</button></header>
+    <p class="sub">Imports fill in bank balances. Add anything else by hand: cash on hand, a card at another bank, a loan. For cards and loans, the balance is what you owe.</p>
+    ${acc.length?acc.map(([id,a])=>`<div class="acc">
+      <label class="f">Name<input type="text" data-acc="${esc(id)}" data-f="name" id="a-${esc(id)}-name" value="${esc(a.name)}" maxlength="40"></label>
+      <label class="f">Type<select data-acc="${esc(id)}" data-f="type" id="a-${esc(id)}-type">${[['chequing','Chequing'],['savings','Savings'],['cash','Cash on hand'],['credit','Credit card'],['loan','Loan / other debt']].map(o=>`<option value="${o[0]}"${a.type===o[0]?' selected':''}>${o[1]}</option>`).join('')}</select></label>
+      <label class="f">${a.type==='credit'||a.type==='loan'?'Owed':'Balance'}<input type="number" step="0.01" inputmode="decimal" data-acc="${esc(id)}" data-f="bal" id="a-${esc(id)}-bal" value="${a.bal==null?'':a.bal}"></label>
+      <label class="f">Limit<input type="number" step="1" inputmode="decimal" data-acc="${esc(id)}" data-f="limit" id="a-${esc(id)}-limit" value="${a.limit==null?'':a.limit}" ${a.type==='credit'?'':'disabled'}></label>
+      <label class="f">Interest %<input type="number" step="0.01" inputmode="decimal" data-acc="${esc(id)}" data-f="apr" id="a-${esc(id)}-apr" value="${a.apr==null?'':a.apr}" ${a.type==='credit'||a.type==='loan'?'placeholder="19.99"':'disabled'}></label>
+      <button class="btn ${ui.arm==='acc:'+id?'danger':'ghost'} small" data-act="delacc" data-id="${esc(id)}">${ui.arm==='acc:'+id?'Confirm':'Remove'}</button></div>`).join(''):`<p class="empty">No accounts yet. Import a file or add one.</p>`}
+  </section>
+  <section class="panel"><h2>Setup</h2><p class="sub">Pay and rent here are only used until your imported data shows the real pattern.</p>
+    <div class="form"><label class="f">Take-home pay<input type="number" step="0.01" inputmode="decimal" id="s-payAmount" data-set="payAmount" value="${set.payAmount}"></label>
+      <label class="f">Paid every<select id="s-payEvery" data-set="payEvery">${[[7,'Week'],[14,'2 weeks'],[30,'Month']].map(o=>`<option value="${o[0]}"${+set.payEvery===o[0]?' selected':''}>${o[1]}</option>`).join('')}</select></label>
+      <label class="f">Next payday<input type="date" id="s-nextPay" data-set="nextPay" value="${esc(set.nextPay||'')}"></label>
+      <label class="f">Rent per month<input type="number" step="1" inputmode="decimal" id="s-rent" data-set="rent" value="${set.rent}"></label>
+      <label class="f">Safety buffer to never touch<input type="number" step="1" inputmode="decimal" id="s-buffer" data-set="buffer" value="${set.buffer}"></label>
+      <label class="f">Hourly pay after tax<input type="number" step="0.01" min="0" inputmode="decimal" id="s-hourly" data-set="hourly" value="${set.hourly||''}"></label>
+      <label class="f">Hours in a usual shift<input type="number" step="0.5" min="0" inputmode="decimal" id="s-shiftHours" data-set="shiftHours" value="${set.shiftHours||''}"></label></div>
+  </section>
+  <section class="panel"><h2>Backup</h2><p class="sub">A backup is one file holding everything in this Cashbook: transactions, cash, wishlist, accounts, category choices and settings. It contains no bank login.</p>
+    <div class="row">${demo?'':'<button class="btn" data-act="backup">Save a backup file</button>'}<label class="btn ghost filebtn"><input class="sr" type="file" id="rest-file" accept=".json,application/json">Restore from a backup file</label></div>
+    ${ui.restore?(i=>`<div class="banner"><p><b>Replace everything here with this backup?</b> ${i.exported&&!isNaN(Date.parse(i.exported))?'It was saved on '+new Date(i.exported).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+' and':'It'} holds ${i.tx} transaction${i.tx===1?'':'s'}${i.from?' from '+dshort(i.from)+' to '+dshort(i.to):''}, ${i.accounts} account${i.accounts===1?'':'s'}, ${i.cash} cash entr${i.cash===1?'y':'ies'} and ${i.wish} wishlist item${i.wish===1?'':'s'}.${demo?'':' What is here now is replaced. You can undo it until you leave this page.'}</p><span class="row"><button class="btn" data-act="restoreok">Replace with the backup</button><button class="btn ghost" data-act="restoreno">Cancel</button></span></div>`)(ui.restore.info):''}
+    ${ui.bmsg?`<p class="msg ${ui.bmsg.ok?'ok':'bad'}" role="status">${esc(ui.bmsg.text)}</p>`:''}</section>
+  ${demo?'':`<section class="panel"><header><h2>Erase everything</h2><button class="btn ${ui.arm==='wipe'?'danger':'ghost'} small" data-act="wipe">${ui.arm==='wipe'?'Yes, erase it all':'Erase my data'}</button></header><p class="sub">Removes every transaction, cash entry, wishlist item and setting saved for this page. Save a backup first. You can undo the erase only until you leave this page.</p></section>`}`;
+}
+
+/* A change made in a field redraws the page a moment later, once the tap or key press that caused it has finished, so the button you were reaching for is still there. */
+let ptrDown=false,renderDue=false,changed=null,seen={view:'',txt:''},routed=false;
+addEventListener('pointerdown',()=>{ptrDown=true},true);
+for(const ev of ['pointerup','pointercancel'])addEventListener(ev,()=>{ptrDown=false;if(renderDue)setTimeout(()=>{if(renderDue)render()},0)},true);
+const later=()=>{renderDue=true;if(!ptrDown)setTimeout(()=>{if(renderDue)render()},0);setTimeout(()=>{if(renderDue)render()},700)};
+/* A redraw replaces the page's contents. These put back the keyboard focus, anything half-typed in the add forms, and let bars move from their old length to the new one. */
+function keyOf(el){const app=q('#app');if(!el||!el.dataset||!app.contains(el))return null;if(el.id)return '#'+CSS.escape(el.id);
+  let s='';for(const k of ['act','id','v','c','m','txcat','sim','sc','bud'])if(el.dataset[k]!=null)s+=`[data-${k}="${CSS.escape(el.dataset[k])}"]`;return s||null}
+const KEEP='#wform [id],#cform [id],input[id^="rv-"]';
+const barsNow=()=>{const o={};document.querySelectorAll('#app [data-bar]').forEach(e=>{o[e.dataset.bar]=e.style.width||e.style.height});return o};
+function barsMove(o){document.querySelectorAll('#app [data-bar]').forEach(e=>{const p=e.style.width?'width':'height',nv=e.style[p],ov=o[e.dataset.bar];if(ov&&ov!==nv){e.style.transition='none';e.style[p]=ov;e.getBoundingClientRect();e.style.transition='';e.style[p]=nv}})}
+function render(){
+  renderDue=false;TODAY=todayISO();A=analyze(S,TODAY);const app=q('#app');
+  document.querySelectorAll('#nav a').forEach(a=>{if(a.getAttribute('href')==='#'+ui.view)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current')});
+  document.querySelectorAll('#quickbtn,#fab').forEach(b=>{b.disabled=ui.loading});
+  if(ui.loading){app.innerHTML=vLoading();setSync();return}
+  const act=document.activeElement,key=keyOf(act),typed=key&&key!==changed&&act.matches('input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file])')?{v:act.value,a:null,b:null}:null,bars=barsNow(),keep={};
+  if(typed)try{typed.a=act.selectionStart;typed.b=act.selectionEnd}catch(e){}
+  app.querySelectorAll(KEEP).forEach(e=>{if(e.id&&'value' in e)keep[e.id]=e.value});changed=null;
+  app.innerHTML=({overview:vOverview,spending:vSpending,debt:vDebt,wishlist:vWishlist,data:vData,review:vReview})[ui.view]();
+  draw();barsMove(bars);
+  for(const id in keep){const e=document.getElementById(id);if(e&&e.value!==keep[id]&&(e.tagName!=='SELECT'||[...e.options].some(o=>o.value===keep[id])))e.value=keep[id]}
+  if(key){const e=app.querySelector(key);if(e){if(typed&&e.value!==typed.v)e.value=typed.v;if(e!==document.activeElement)try{e.focus({preventScroll:true});if(typed&&typed.a!=null)e.setSelectionRange(typed.a,typed.b)}catch(x){}}}
+  /* When the answer at the top changes while you stay on the same screen, it is marked for a moment. */
+  const a=q('#ans-a'),txt=a?a.textContent:'';if(a&&seen.view===ui.view&&seen.txt&&seen.txt!==txt)a.classList.add('chg');seen={view:ui.view,txt};
+  setSync();setLive();showUndo();
+}
+function draw(){if(ui.loading)return;if(ui.view==='overview')drawOverview();else if(ui.view==='spending')drawSpending();else if(ui.view==='wishlist')wishBody();else if(ui.view==='debt')debtBody()}
+let rz=0,lastW=innerWidth;addEventListener('resize',()=>{if(innerWidth===lastW)return;lastW=innerWidth;clearTimeout(rz);rz=setTimeout(draw,150)});
+/* Moving to another screen puts the keyboard and screen reader on that screen's answer. */
+function route(){const h=location.hash.slice(1);ui.view=VIEWS.includes(h)?h:'overview';ui.arm=null;hideTip();render();scrollTo(0,0);if(routed){const t=q('#ans')||q('#app');try{t.focus({preventScroll:true})}catch(e){}}routed=true}
+addEventListener('hashchange',route);
+/* ---------- actions ---------- */
+const uid=p=>p+Date.now().toString(36)+Math.floor(Math.random()*1e4).toString(36);
+function newAccount(type){const names={chequing:'TD Chequing',credit:'TD Visa',savings:'TD Savings',cash:'Cash on hand',loan:'Loan'},id=uid('a'),used=new Set(Object.values(S.accounts).map(a=>a.name)),base=names[type]||'Account';
+  let name=base,n=2;while(used.has(name))name=base+' '+n++;
+  S.accounts[id]={name,type,bal:type==='cash'?0:null,balDate:null};return id}
+async function importFiles(files){
+  const before=snap(),sel=q('#imp-acct').value,selId=sel.startsWith('new:')?null:sel,lines=[],touched=new Set(),dz=q('#drop b');let ok=false,total=0;
+  if(dz)dz.textContent=files.length>1?`Reading ${files.length} files…`:'Reading the file…';
+  for(const f of files){let text;try{text=await f.text()}catch(e){lines.push(`${f.name}: could not read the file.`);continue}
+    const selType=selId?(S.accounts[selId]||{}).type||'chequing':sel.slice(4),P=parseStatement(text,selType);
+    if(!P.rows.length){lines.push(`${f.name}: no transactions found. Download it from EasyWeb as CSV and try again.`);continue}
+    leaveDemo();
+    const F=fileKind(P),pick=pickAccount(S,selId,selType,F,P.rows),kind=F.kind==='credit'?'credit card':'bank account';
+    if(pick.skip){lines.push(`${f.name}: not added. It reads as a ${kind} file, but ${S.accounts[selId].name} is not a ${kind}. Choose the right account above and add the file again.`);continue}
+    const id=pick.id||newAccount(pick.type),type=S.accounts[id].type;
+    const have=new Set(S.tx.map(t=>t.id)),seen={};let added=0,dup=0;
+    for(const r of P.rows){const base=[id,r.d,r.desc,r.amt,r.bal==null?'':r.bal].join('|'),n=seen[base]=(seen[base]||0)+1,tid=base+'|'+n;
+      if(have.has(tid)){dup++;continue}S.tx.push({id:tid,d:r.d,desc:r.desc,amt:r.amt,acct:id,bal:r.bal,n});have.add(tid);added++;touched.add('tx-'+ym(r.d))}
+    const used=new Set();let matched=0;
+    S.pend=S.pend.filter(p=>{const i=P.rows.findIndex((r,j)=>!used.has(j)&&Math.abs(r.amt+p.amt)<.005&&diff(r.d,p.d)>=-1&&diff(r.d,p.d)<=6);if(i<0)return true;used.add(i);matched++;return false});
+    const a=S.accounts[id],latest=P.asc?P.rows[P.rows.length-1]:P.rows[0];
+    if(latest.bal!=null&&(!a.balDate||latest.d>=a.balDate)){a.bal=latest.bal;a.balDate=latest.d}
+    ok=true;total+=added;lines.push(`${f.name}: added ${added} transaction${added===1?'':'s'} to ${a.name}${dup?`, skipped ${dup} already here`:''}.${latest.bal!=null?` ${isDebt(type)?'Owed':'Balance'} ${money(a.bal)} as of ${dshort(a.balDate)}.`:' No balance column found, so set the balance below.'}${matched?` Matched ${matched} pending payment${matched>1?'s':''}.`:''}${pick.moved?` It went to ${a.name}, the account these rows belong to.`:''}${pick.flipped?` It reads as a ${kind} file, so it got a new ${kind} account.`:''}${F.bad?` ${F.bad} row${F.bad>1?'s do':' does'} not add up with the balance column. Check ${F.bad>1?'them':'it'} in Spending.`:''}`)}
+  ui.msg={ok,text:lines.join('\n')};say(ui.msg.text);if(ok){ui.month=null;save(['meta',...touched]);offerUndo(`Imported ${total} transaction${total===1?'':'s'}.`,before)}render();
+}
+/* ---------- adding a payment ---------- */
+const qd=q('#qd');
+function openQuick(from){if(ui.loading)return;ui.qfrom=(from&&from.id)||null;qd.classList.remove('typing');qd.innerHTML=vQuick();if(!qd.open){if(qd.showModal)qd.showModal();else qd.setAttribute('open','')}q('#q-amt').focus()}
+/* Runs when the sheet closes, however it was closed (a button, saving, the Escape key or a tap outside). */
+function quickDone(){if(!qd.innerHTML)return;qd.innerHTML='';qd.classList.remove('typing');const b=ui.qfrom&&document.getElementById(ui.qfrom);ui.qfrom=null;if(b&&b.getClientRects().length)b.focus()}
+function closeQuick(){if(qd.open){if(qd.close)qd.close();else qd.removeAttribute('open')}quickDone()}
+qd.addEventListener('close',quickDone);
+qd.addEventListener('click',e=>{if(e.target!==qd)return;const r=qd.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)closeQuick()});
+/* Typing a place name brings up the phone's keyboard, so the sheet moves to the top where the keyboard cannot cover it. */
+qd.addEventListener('focusin',e=>{if(e.target.id==='q-desc'&&matchMedia('(max-width:520px)').matches)qd.classList.add('typing')});
+function saveQuick(place){
+  const inp=q('#q-amt'),amt=Math.round(parseFloat(inp.value)*100)/100,er=q('#q-err');
+  if(!(amt>0)){er.textContent='Enter the amount first.';er.hidden=false;inp.focus();return}
+  const pay=(q('#qform input[name=qpay]:checked')||{value:''}).value,isCash=pay==='cash',where=String(place||q('#q-desc').value).trim().slice(0,50),before=snap();
+  leaveDemo();
+  if(isCash){const c=where?ruleOf(S,where)||autoCat(where,-amt,'credit',0):'Other';S.cash.push({id:uid('c'),d:TODAY,amt:-amt,cat:CATS[c]==='fixed'||CATS[c]==='flex'?c:'Other',note:where})}
+  else S.pend.push({id:uid('q'),d:TODAY,amt,desc:where||'Card payment',acct:pay,src:'quick',ts:Date.now()});
+  save(['meta']);closeQuick();offerUndo(`Added ${money(amt)}${where?' at '+where:isCash?' in cash':' on the card'}.`,before);render();
+}
+document.addEventListener('click',e=>{
+  const kb=e.target.closest('[data-key]');if(kb){const i=q('#q-amt');if(i){i.value=padKey(i.value,kb.dataset.key);q('#q-err').hidden=true}return}
+  const b=e.target.closest('[data-act]');if(!b)return;const a=b.dataset.act,d=b.dataset;
+  if(a==='quick'){openQuick(b)}
+  else if(a==='quickx'){closeQuick()}
+  else if(a==='qplace'){const i=q('#q-amt');if(parseFloat(i.value)>0)saveQuick(d.v);else{q('#q-desc').value=d.v;const er=q('#q-err');er.textContent='Enter the amount, then press Save.';er.hidden=false;if(!qd.classList.contains('typing'))i.focus()}}
+  else if(a==='skip'){const t=q('#ans')||q('#app');t.focus();t.scrollIntoView({block:'start'})}
+  else if(a==='tbl'){ui.tbl[d.v]=!ui.tbl[d.v];saveUi();render()}
+  else if(a==='retry'){if(store.col)flush();else{store.err=null;const s=q('#sync');if(s)s.textContent='Connecting…';connect().then(render)}}
+  else if(a==='keepacct'||a==='keepmine'){const c=store.conflict;if(!c)return;store.conflict=null;ui.extra=null;ui.sim={};ui.month=null;
+    if(a==='keepacct'){const mine=JSON.parse(JSON.stringify(S));S=c.acct;store.col=c.col;lsSet();markSynced();undo={label:'Now using your account’s data.',conflict:c,mine}}
+    else{store.pending=c;undo={label:'Now using this device’s data. Your account is updated to match when you close this message or change something.',conflict:c}}
+    render();if(!live.unsub)liveInit()}
+  else if(a==='clearall'){ui.q='';ui.fcat='';ui.shown=40;render()}
+  else if(a==='livesetup'){leaveDemo();save(['meta']);render()}
+  else if(a==='liveconnect'){liveConnect()}
+  else if(a==='undo'){doUndo()}
+  else if(a==='undox'){const p=store.pending;undo=null;showUndo();if(p)save(['meta'])}
+  else if(a==='backup'){saveBackup()}
+  else if(a==='restoreok'){doRestore()}
+  else if(a==='restoreno'){ui.restore=null;render()}
+  else if(a==='budedit'){ui.bedit=!ui.bedit;render()}
+  else if(a==='budavg'){const before=snap(),B=budgetAverages(A);S.budgets={...B.avg};save(['meta']);offerUndo('Budgets set from what you spent in '+(B.n===1?'your last full month.':'your last '+B.n+' months.'),before);render()}
+  else if(a==='buyw'){const w=S.wish.find(x=>x.id===d.id);if(!w)return;const before=snap(),R=evalWishlist(S,A,0).items.find(i=>i.id===d.id);
+    S.wish=S.wish.filter(x=>x.id!==d.id);delete ui.sim[d.id];S.bought.push({id:w.id,name:w.name,price:w.price,need:w.need,added:w.added,bought:TODAY,verdict:R?R.verdict:''});save(['meta']);
+    offerUndo('Marked '+w.name+' as bought. You will be asked on '+dshort(addDays(TODAY,30))+' if it was worth it.',before);render()}
+  else if(a==='worth'){const x=S.bought.find(y=>y.id===d.id);if(!x)return;const n=q('#rv-'+CSS.escape(d.id)),note=n?n.value.trim():'';x.worth=d.v;x.asked=TODAY;if(note)x.note=note;save(['meta']);render()}
+  else if(a==='delb'){const before=snap(),x=S.bought.find(y=>y.id===d.id);S.bought=S.bought.filter(y=>y.id!==d.id);save(['meta']);if(x)offerUndo('Removed '+x.name+' from the things you bought.',before);render()}
+  else if(a==='delp'){const before=snap(),x=S.pend.find(p=>p.id===d.id);S.pend=S.pend.filter(p=>p.id!==d.id);save(['meta']);if(x)offerUndo(`Removed the pending payment at ${x.desc}.`,before);render()}
+  else if(a==='copysubj'){const el=q('#subj'),txt=el.textContent;const sel=()=>{const r=document.createRange();r.selectNodeContents(el);const g=getSelection();g.removeAllRanges();g.addRange(r)};
+    try{navigator.clipboard.writeText(txt).then(()=>{b.textContent='Copied'},sel)}catch(x){sel()}}
+  else if(a==='range'){ui.range=+d.v;render()}
+  else if(a==='span'){ui.spanM=+d.v;ui.month=null;render()}
+  else if(a==='month'){ui.month=d.m;render()}
+  else if(a==='fcat'){ui.fcat=ui.fcat===d.c?'':d.c;ui.shown=40;render();const p=q('#txp');if(ui.fcat&&p)p.scrollIntoView({block:'start',behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth'})}
+  else if(a==='clearf'){ui.fcat='';render()}
+  else if(a==='more'){ui.shown+=60;q('#txlist').innerHTML=txList()}
+  else if(a==='delw'){const before=snap(),x=S.wish.find(w=>w.id===d.id);S.wish=S.wish.filter(w=>w.id!==d.id);delete ui.sim[d.id];save(['meta']);if(x)offerUndo(`Removed ${x.name} from the wishlist.`,before);render()}
+  else if(a==='delc'){const before=snap(),x=S.cash.find(c=>c.id===d.id);S.cash=S.cash.filter(c=>c.id!==d.id);save(['meta']);if(x)offerUndo(`Removed the ${money(Math.abs(x.amt))} cash entry${x.note?' for '+x.note:''}.`,before);render()}
+  else if(a==='addacc'){leaveDemo();newAccount('cash');save(['meta']);render()}
+  else if(a==='delacc'){if(ui.arm!=='acc:'+d.id){ui.arm='acc:'+d.id;render();return}
+    const before=snap(),nm=(S.accounts[d.id]||{}).name||'the account',keys=new Set(['meta']);let n=0;S.tx.forEach(t=>{if(t.acct===d.id){n++;keys.add('tx-'+ym(t.d))}});S.tx=S.tx.filter(t=>t.acct!==d.id);delete S.accounts[d.id];ui.arm=null;save([...keys]);
+    offerUndo(`Removed ${nm}${n?` and its ${n} transaction${n===1?'':'s'}`:''}.`,before);render()}
+  else if(a==='wipe'){if(ui.arm!=='wipe'){ui.arm='wipe';render();return}wipe()}
+});
+async function wipe(){
+  const before=snap(),c=store.conflict||store.pending;if(c){store.col=c.col;store.conflict=store.pending=null}await clearSaved(before.keys);
+  if(live.unsub){live.unsub();live.unsub=null}live.state='off';
+  S=demoState(TODAY);demo=true;ui.arm=null;ui.restore=null;ui.bmsg=null;ui.msg={ok:true,text:'Everything was erased. You are looking at example data again.'};ui.month=null;ui.sim={};
+  offerUndo('Erased everything.',before);say(ui.msg.text);render();
+}
+document.addEventListener('submit',e=>{
+  e.preventDefault();
+  if(e.target.id==='wform'){const name=q('#w-name').value.trim(),price=parseFloat(q('#w-price').value);if(!name||!(price>0))return;
+    leaveDemo();S.wish.push({id:uid('w'),name,price:Math.round(price*100)/100,need:+q('#w-need').value,added:TODAY});save(['meta']);e.target.reset();render();q('#w-name').focus()}
+  else if(e.target.id==='qform'){saveQuick()}
+  else if(e.target.id==='cform'){const amt=parseFloat(q('#c-amt').value),d=q('#c-date').value;if(!(amt>0)||!d)return;
+    leaveDemo();S.cash.push({id:uid('c'),d,amt:Math.round(amt*100)/100*+q('#c-dir').value,cat:q('#c-cat').value,note:q('#c-note').value.trim()});ui.msg=null;save(['meta']);e.target.reset();render()}
+});
+document.addEventListener('change',e=>{
+  const t=e.target,d=t.dataset;changed=keyOf(t);
+  if(t.id==='imp-file'){if(t.files.length)importFiles([...t.files])}
+  else if(t.id==='rest-file'){if(t.files.length)pickRestore(t.files[0])}
+  else if(d.txcat){const pt=S.pend.find(x=>x.id===d.txcat),tx=pt||S.tx.find(x=>x.id===d.txcat);if(!tx)return;const k=mkey(tx.desc),keys=new Set(pt?['meta']:['meta','tx-'+ym(tx.d)]);
+    if(k!=='UNKNOWN'&&!isETF(tx.desc.toUpperCase())){S.rules[k]=t.value;S.tx.forEach(x=>{if(x.cat&&mkey(x.desc)===k){delete x.cat;keys.add('tx-'+ym(x.d))}});S.pend.forEach(x=>{if(mkey(x.desc)===k)delete x.cat})}else tx.cat=t.value;
+    save([...keys]);later()}
+  else if(t.id==='extra'){if(!demo){S.settings.extraPay=ui.extra;save(['meta'])}}
+  else if(d.bud){const v=parseFloat(t.value);if(v>0)S.budgets[d.bud]=Math.round(v*100)/100;else delete S.budgets[d.bud];save(['meta'])}
+  else if(d.sc){ui.sc[d.sc]=t.type==='checkbox'?t.checked:t.value;if((d.sc==='amt'||d.sc==='d')&&t.value&&!ui.sc.once){ui.sc.once=true;q('#sc-once').checked=true}drawOverview()}
+  else if(d.sim){if(t.checked)ui.sim[d.sim]=1;else delete ui.sim[d.sim];wishBody()}
+  else if(t.id==='txf'){ui.fcat=t.value;ui.shown=40;later()}
+  else if(d.acc){const a=S.accounts[d.acc];if(!a)return;const f=d.f;
+    if(f==='name')a.name=t.value.trim()||'Account';else if(f==='type')a.type=t.value;else{a[f]=t.value===''?null:parseFloat(t.value);if(f==='bal')a.balDate=TODAY}
+    save(['meta']);later()}
+  else if(d.set){leaveDemo();S.settings[d.set]=d.set==='payAcct'?t.value:t.type==='number'?(parseFloat(t.value)||0):t.type==='date'?t.value:+t.value;save(['meta']);later()}
+});
+document.addEventListener('input',e=>{
+  if(e.target.id==='txq'){ui.q=e.target.value;ui.shown=40;q('#txlist').innerHTML=txList()}
+  else if(e.target.id==='trim'){ui.trim=+e.target.value;const b=barsNow();wishBody();barsMove(b)}
+  else if(e.target.id==='q-amt'){const v=amtText(e.target.value);if(v!==e.target.value)e.target.value=v;q('#q-err').hidden=true}
+  else if(e.target.id==='extra'){ui.extra=+e.target.value;debtBody()}
+});
+['dragover','dragleave','drop'].forEach(ev=>document.addEventListener(ev,e=>{const z=e.target.closest&&e.target.closest('#drop');if(!z)return;e.preventDefault();
+  z.classList.toggle('over',ev==='dragover');if(ev==='drop'&&e.dataTransfer&&e.dataTransfer.files.length)importFiles([...e.dataTransfer.files])}));
+
+/* ---------- boot ---------- */
+(function boot(){
+  document.documentElement.lang='en-CA';
+  try{const raw=localStorage.getItem(LS),P=raw&&JSON.parse(raw),N=normalize(P);if(N){S=N;demo=false;store.ls=true;if(!P.settings.liveCode)lsSet()}}catch(e){}
+  /* With nothing saved in this browser, wait a few seconds for the account before falling back to example data. */
+  if(!S){S=demoState(TODAY);demo=true;ui.loading=!!(window.claude&&window.claude.use)}
+  route();
+  if(ui.loading)setTimeout(()=>{if(ui.loading){ui.loading=false;render()}},6000);
+  connect().then(liveInit);
+})();</script>
+</body></html>
